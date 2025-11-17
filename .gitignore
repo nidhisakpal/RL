@@ -1,0 +1,30 @@
+# Result directories
+results*/
+results/
+
+# Compiled binaries
+simulate
+compute_topo_dist_simple
+compute_topology_distance
+test_parse*
+bb
+efst
+hgmst
+plotfst
+prunefst
+rand_points
+smt
+merge_ckpt
+
+# Object files
+*.o
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Session logs and test files
+SESSION_LOG.md
+test_*.txt
+test_*.html
+solution.txt

@@ -1,0 +1,109 @@
+A)replacing edge 12-15 with 12-19 will lead to
+a shorter total length while charging the same nodes
+
+TERMINAL COORDINATES (iter4):
+Terminal 12: (0.719712, 0.718167)
+Terminal 15: (0.965492, 0.193570)
+Terminal 19: (0.951259, 0.507467)
+
+DISTANCE ANALYSIS:
+Distance 12-15: 0.579318
+Distance 12-19: 0.313063
+Potential savings: 0.266255 (45.9% shorter)
+
+cd iter4
+grep -E "x\[[0-9]+\] = 1\.000000" solution.txt | sed -E 's/.*x\[([0-9]+)\].*/\1/' | sort -n | uniq > selected.lst
+awk 'NR==FNR{sel[$1]=1;next} sel[$1]{print}' selected.lst fsts.txt > sel_fsts.txt
+for t in 3 6 12 15 19; do echo "Terminal $t:"; grep -E "(^|[[:space:]])$t($|[[:space:]])" sel_fsts.txt; done
+
+Terminal 3: Covered by FSTs including:
+- 12 3 8
+- 12 3 10
+- 12 3 8 10
+- 17 3
+- 3 12
+
+Terminal 6: Covered by FSTs including:
+- 6
+- 6 2 5
+- 11 6 5
+- 6 11
+- 5 6
+- 6 2
+
+Terminal 12: Covered by FSTs including:
+- 12 3 8
+- 12 3 10
+- 12 8 10
+- 13 12 10
+- 12 8 9 10
+- 12 3 8 10
+- 12 10
+- 3 12
+
+Terminal 15: Covered by FSTs including:
+- 20 13 15
+- 15 20
+
+Terminal 19: Covered by FSTs including:
+- 19 10 18
+- 19 10 8 9
+- 19 10 8 18
+- 19 10 8 9 18
+- 19 18
+- 19 10
+
+The EFST (Euclidean Full Steiner Tree) generator was too aggressive in pruning
+FST candidates and eliminated the 12-19 connection despite it being geometrically
+favorable. This forced the integer program to select longer paths through
+intermediate nodes
+
+
+B) Figure #10, there is clearly a better way to connect nodes
+7, 8, 9, 17, 18 (as shown in Figure #7) but the result is choosing a suboptimal
+solution
+
+
+TERMINAL COORDINATES (iter10):
+Terminal 7:  (0.627395, 0.212214) - Battery: 88.60%
+Terminal 8:  (0.079488, 0.797099) - Battery: 59.20%
+Terminal 9:  (0.032748, 0.880325) - Battery: 74.90%
+Terminal 17: (0.160010, 0.418795) - Battery: 64.00%
+Terminal 18: (0.290945, 0.962080) - Battery: 82.60%
+
+Terminal | iter7  | iter10 | Change
+---------|--------|--------|--------
+   7     | 73.60  | 88.60  | +15.0
+   8     | 64.20  | 59.20  | -5.0
+   9     | 79.90  | 74.90  | -5.0
+   17    | 69.00  | 64.00  | -5.0
+   18    | 77.60  | 82.60  | +5.0
+
+
+-From iter7 
+fs12: 18 9 17 (3-terminal FST)
+   Steiner point: (0.3218, 0.9371)
+
+fs13: 11 7 8 9 (4-terminal FST)
+   Two Steiner points: (0.2692, 0.7971) and (0.0799, 0.7979)
+   Direct 7-8 connection through nearby Steiner point
+
+-From iter10 
+fs5: 11 2 7 (3-terminal FST)
+   Steiner point: (0.2133, 0.6200)
+
+fs19: 18 9 7 8 17 (5-terminal MEGA-FST!)
+   Three Steiner points: (0.3157, 0.9369), (0.3000, 0.8802), (0.0872, 0.8250)
+   Forces long path from terminal 8 through multiple intermediate points
+
+Cause:
+ Different battery levels changed the α×battery_cost
+   component of the objective function
+iter10 optimizer chose one massive 5-terminal FST instead
+   of two efficient smaller FSTs
+
+
+MIP GAP COMPARISON:
+- iter7: 1.84% (slightly worse convergence)
+- iter10: 0.82% (better convergence, but suboptimal solution!)
+

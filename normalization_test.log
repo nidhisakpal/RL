@@ -1,0 +1,24 @@
+🚀 Battery-Aware Network Optimization - Iterative Runner
+==========================================================
+Configuration:
+  Terminals:    20
+  Budget:       2.0
+  Charge rate:  10.0%
+  Demand rate:  5.0%
+  Iterations:   5
+  Output dir:   results_normalization_test
+  Reuse terms:  no
+==========================================================
+
+📁 Created output directory: results_normalization_test
+🎲 Generating 20 random terminals...
+✅ Generated new random terminals: results_normalization_test/terminals_iter1.txt
+
+🚀 ITERATION 1
+===============
+Step 2: Generating Full Steiner Trees...
+✅ Generated 622 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+./run_optimization.sh: line 66: 108634 Aborted                 (core dumped) GEOSTEINER_BUDGET=$BUDGET ./bb < "$OUTPUT_DIR/fsts_iter${iter}.txt" > "$OUTPUT_DIR/solution_iter${iter}.txt" 2>&1

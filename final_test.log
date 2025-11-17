@@ -1,0 +1,140 @@
+🚀 Battery-Aware Network Optimization - Iterative Runner
+==========================================================
+Configuration:
+  Terminals:    20
+  Budget:       2.0
+  Charge rate:  10.0%
+  Demand rate:  5.0%
+  Iterations:   5
+  Output dir:   results_final_test
+  Reuse terms:  no
+==========================================================
+
+📁 Created output directory: results_final_test
+🎲 Generating 20 random terminals...
+✅ Generated new random terminals: results_final_test/terminals_iter1.txt
+
+🚀 ITERATION 1
+===============
+Step 2: Generating Full Steiner Trees...
+✅ Generated 477 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final_test/visualization_iter1.html
+Step 6: Creating detailed FST analysis...
+✅ FST analysis created: results_final_test/iter1_analysis.txt
+
+🚀 ITERATION 2
+===============
+Step 1: Updating battery levels based on previous solution...
+✅ Battery levels updated (connected +10.0% charge -5.0% demand, disconnected -5.0% drain)
+Step 2: Generating Full Steiner Trees...
+✅ Generated 477 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final_test/visualization_iter2.html
+Step 5: Computing transition metrics from iteration 1...
+  Network cost: 2.542583 → 2.615221 (Δ=0.072638)
+  Graph distance: 2.402840
+Step 6: Creating detailed FST analysis...
+✅ FST analysis created: results_final_test/iter2_analysis.txt
+
+🚀 ITERATION 3
+===============
+Step 1: Updating battery levels based on previous solution...
+✅ Battery levels updated (connected +10.0% charge -5.0% demand, disconnected -5.0% drain)
+Step 2: Generating Full Steiner Trees...
+✅ Generated 477 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final_test/visualization_iter3.html
+Step 5: Computing transition metrics from iteration 2...
+  Network cost: 2.615221 → 2.655716 (Δ=0.040495)
+  Graph distance: 2.481051
+Step 6: Creating detailed FST analysis...
+✅ FST analysis created: results_final_test/iter3_analysis.txt
+
+🚀 ITERATION 4
+===============
+Step 1: Updating battery levels based on previous solution...
+✅ Battery levels updated (connected +10.0% charge -5.0% demand, disconnected -5.0% drain)
+Step 2: Generating Full Steiner Trees...
+✅ Generated 477 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final_test/visualization_iter4.html
+Step 5: Computing transition metrics from iteration 3...
+  Network cost: 2.655716 → 2.651860 (Δ=-0.003856)
+  Graph distance: 2.157927
+Step 6: Creating detailed FST analysis...
+✅ FST analysis created: results_final_test/iter4_analysis.txt
+
+🚀 ITERATION 5
+===============
+Step 1: Updating battery levels based on previous solution...
+✅ Battery levels updated (connected +10.0% charge -5.0% demand, disconnected -5.0% drain)
+Step 2: Generating Full Steiner Trees...
+✅ Generated 477 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final_test/visualization_iter5.html
+Step 5: Computing transition metrics from iteration 4...
+  Network cost: 2.651860 → 2.618316 (Δ=-0.033544)
+  Graph distance: 3.120518
+Step 6: Creating detailed FST analysis...
+✅ FST analysis created: results_final_test/iter5_analysis.txt
+
+📊 GENERATING COMPARISON REPORT
+===============================
+✅ Comparison report generated: results_final_test/battery_evolution_report.txt
+
+🎉 ALL 5 ITERATIONS COMPLETED SUCCESSFULLY!
+=============================================
+
+📁 Results saved in: results_final_test/
+📊 View report: cat results_final_test/battery_evolution_report.txt
+🌐 Open visualizations:
+   Iteration 1: results_final_test/visualization_iter1.html
+   Iteration 2: results_final_test/visualization_iter2.html
+   Iteration 3: results_final_test/visualization_iter3.html
+   Iteration 4: results_final_test/visualization_iter4.html
+   Iteration 5: results_final_test/visualization_iter5.html
+
+🔄 To run again:
+   ./run_optimization.sh [terminals] [budget] [charge_rate] [demand_rate] [iterations] [output_dir] [reuse_terminals]
+
+Examples:
+   # Default (20 terminals, budget=1.5, new random terminals)
+   ./run_optimization.sh
+
+   # Tight budget
+   ./run_optimization.sh 20 0.5 10.0 5.0 10 tight no
+
+   # Moderate budget with NEW random terminals each run
+   ./run_optimization.sh 20 1.5 10.0 5.0 10 moderate no
+
+   # REUSE SAME terminals to compare algorithm improvements
+   ./run_optimization.sh 20 1.5 10.0 5.0 10 moderate yes
+
+   # Run again on existing directory (reuse terminals)
+   ./run_optimization.sh 20 2.0 10.0 5.0 10 moderate yes
+
+NOTE:
+  - Budget is NORMALIZED (0-3 typical for 20 terminals)
+  - Set reuse_terminals=yes to test on SAME terminal set
+  - Battery objective now INVERTED: low battery = high priority

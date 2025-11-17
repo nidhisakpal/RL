@@ -1,0 +1,57 @@
+===============================================
+   BUDGET CONSTRAINT VERIFICATION
+===============================================
+
+Budget Limit: 500,000
+
+BUDGET CONSTRAINT (lines 672-687 in constrnt.c):
+  Formula: Σ tree_cost[i] * x[i] ≤ 500000
+
+COEFFICIENTS (ONLY tree costs, NO battery):
+  • x[0] coefficient = 475673  (tree cost ONLY)
+  • x[1] coefficient = 132683  (tree cost ONLY)
+  • x[2] coefficient = 350704  (tree cost ONLY)
+  • x[3] coefficient = 497380  (tree cost ONLY)
+
+VERIFICATION:
+  ✓ Loop runs from i=0 to nedges-1 (4 FST variables)
+  ✓ Uses cip->cost[i] which is RAW tree length
+  ✓ Does NOT include battery costs
+  ✓ Does NOT include not_covered variables
+  ✓ Variables nedges to nedges+nterms are NOT in budget constraint
+
+OBJECTIVE FUNCTION (separate from budget):
+  Formula: (tree/max_tree) + alpha * (battery/max_battery)
+  
+  FST 0: tree=0.956357, battery=1.000000, objective=1.956357
+  FST 1: tree=0.266765, battery=0.812805, objective=1.079571
+  FST 2: tree=0.705102, battery=0.620235, objective=1.325337
+  FST 3: tree=1.000000, battery=0.634409, objective=1.634409
+
+KEY OBSERVATION:
+  • Budget constraint uses RAW tree costs (475673, 132683, etc.)
+  • Objective function uses NORMALIZED values (0-1 range)
+  • These are SEPARATE - budget does not affect objective!
+
+EXAMPLE SCENARIO:
+  If solver selects FST 1 (x[1] = 1):
+    - Budget used: 132683 out of 500000 ✓
+    - Objective value: 1.079571
+  
+  If solver tries to select FST 3 (x[3] = 1):
+    - Budget used: 497380 out of 500000 ✓
+    - Objective value: 1.634409
+  
+  Cannot select FST 0 + FST 3 together:
+    - Would need: 475673 + 497380 = 973053
+    - But budget is only: 500000
+    - Budget constraint BLOCKS this! ✓
+
+CONCLUSION:
+  ✅ Budget constraint uses ONLY tree length costs
+  ✅ Budget is applied in RAW form (not normalized)
+  ✅ Battery costs are NOT part of budget constraint
+  ✅ not_covered variables are NOT part of budget constraint
+  ✅ Budget constraint is INDEPENDENT of objective function
+
+===============================================

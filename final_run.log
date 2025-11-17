@@ -1,0 +1,169 @@
+🚀 Battery-Aware Network Optimization - Iterative Runner
+==========================================================
+Configuration:
+  Terminals:    20
+  Budget:       800000
+  Charge rate:  10.0%
+  Demand rate:  5.0%
+  Iterations:   10
+  Output dir:   results_final
+==========================================================
+
+📁 Created output directory: results_final
+🎲 Generating 20 random terminals...
+✅ Generated terminals: results_final/terminals_iter1.txt
+
+🚀 ITERATION 1
+===============
+Step 2: Generating Full Steiner Trees...
+✅ Generated 445 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final/visualization_iter1.html
+
+🚀 ITERATION 2
+===============
+Step 1: Updating battery levels...
+✅ Battery levels updated
+Step 2: Generating Full Steiner Trees...
+✅ Generated 445 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final/visualization_iter2.html
+
+🚀 ITERATION 3
+===============
+Step 1: Updating battery levels...
+✅ Battery levels updated
+Step 2: Generating Full Steiner Trees...
+✅ Generated 445 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final/visualization_iter3.html
+
+🚀 ITERATION 4
+===============
+Step 1: Updating battery levels...
+✅ Battery levels updated
+Step 2: Generating Full Steiner Trees...
+✅ Generated 445 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final/visualization_iter4.html
+
+🚀 ITERATION 5
+===============
+Step 1: Updating battery levels...
+✅ Battery levels updated
+Step 2: Generating Full Steiner Trees...
+✅ Generated 445 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final/visualization_iter5.html
+
+🚀 ITERATION 6
+===============
+Step 1: Updating battery levels...
+✅ Battery levels updated
+Step 2: Generating Full Steiner Trees...
+✅ Generated 445 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final/visualization_iter6.html
+
+🚀 ITERATION 7
+===============
+Step 1: Updating battery levels...
+✅ Battery levels updated
+Step 2: Generating Full Steiner Trees...
+✅ Generated 445 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final/visualization_iter7.html
+
+🚀 ITERATION 8
+===============
+Step 1: Updating battery levels...
+✅ Battery levels updated
+Step 2: Generating Full Steiner Trees...
+✅ Generated 445 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final/visualization_iter8.html
+
+🚀 ITERATION 9
+===============
+Step 1: Updating battery levels...
+✅ Battery levels updated
+Step 2: Generating Full Steiner Trees...
+✅ Generated 445 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final/visualization_iter9.html
+
+🚀 ITERATION 10
+===============
+Step 1: Updating battery levels...
+✅ Battery levels updated
+Step 2: Generating Full Steiner Trees...
+✅ Generated 445 FSTs
+Step 2.5: Generating FST dump file...
+✅ Generated FST dump file
+Step 3: Solving budget-constrained optimization...
+✅ Optimization completed
+Step 4: Creating visualization...
+✅ Visualization created: results_final/visualization_iter10.html
+
+📊 GENERATING COMPARISON REPORT
+===============================
+✅ Comparison report generated: results_final/battery_evolution_report.txt
+
+🎉 ALL 10 ITERATIONS COMPLETED SUCCESSFULLY!
+=============================================
+
+📁 Results saved in: results_final/
+📊 View report: cat results_final/battery_evolution_report.txt
+🌐 Open visualizations:
+   Iteration 1: results_final/visualization_iter1.html
+   Iteration 2: results_final/visualization_iter2.html
+   Iteration 3: results_final/visualization_iter3.html
+   Iteration 4: results_final/visualization_iter4.html
+   Iteration 5: results_final/visualization_iter5.html
+   Iteration 6: results_final/visualization_iter6.html
+   Iteration 7: results_final/visualization_iter7.html
+   Iteration 8: results_final/visualization_iter8.html
+   Iteration 9: results_final/visualization_iter9.html
+   Iteration 10: results_final/visualization_iter10.html
+
+🔄 To run again with different parameters:
+   ./run_optimization.sh [terminals] [budget] [charge_rate] [demand_rate] [iterations] [output_dir]
+
+Example:
+   ./run_optimization.sh 30 1000000 15.0 5.0 10 big-test

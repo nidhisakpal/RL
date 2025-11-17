@@ -1,0 +1,1121 @@
+ % ./bb
+ % Args:
+DEBUG P1READ: Terminal 0 battery=100.00
+DEBUG P1READ: Terminal 1 battery=83.60
+DEBUG P1READ: Terminal 2 battery=62.70
+DEBUG P1READ: Terminal 3 battery=96.50
+DEBUG P1READ: Terminal 4 battery=74.30
+DEBUG P1READ: Terminal 5 battery=38.50
+DEBUG P1READ: Terminal 6 battery=53.60
+DEBUG P1READ: Terminal 7 battery=64.20
+DEBUG P1READ: Terminal 8 battery=49.90
+DEBUG P1READ: Terminal 9 battery=47.10
+DEBUG P1READ: Terminal 10 battery=51.20
+DEBUG P1READ: Terminal 11 battery=17.70
+DEBUG P1READ: Terminal 12 battery=84.00
+DEBUG P1READ: Terminal 13 battery=20.90
+DEBUG P1READ: Terminal 14 battery=71.30
+DEBUG P1READ: Terminal 15 battery=95.00
+DEBUG P1READ: Terminal 16 battery=49.00
+DEBUG P1READ: Terminal 17 battery=57.60
+DEBUG P1READ: Terminal 18 battery=32.20
+DEBUG P1READ: Terminal 19 battery=58.60
+GLOBAL NORMALIZATION: max_edge_len=0.000000, max_fst_cost=575847.774292, max_battery_cost=100.000000
+DEBUG HG: num_verts=20, num_edges=33
+ % Phase 1: 0.00 seconds
+
+%%BeginSetup
+
+0 1 0 1 SetAxes
+
+20 DefineTerminals
+	.3842570000000000	.2697800000000000	DT
+	.7279070000000000	.1163340000000000	DT
+	.9545800000000000	.4333600000000000	DT
+	.4406310000000000	.3723470000000000	DT
+	.4361580000000000	.0674840000000000	DT
+	.0513820000000000	.8572080000000000	DT
+	.8563380000000000	.9715680000000000	DT
+	.9240140000000000	.8912290000000000	DT
+	.9781310000000000	.3983180000000000	DT
+	.0416800000000000	.5578990000000000	DT
+	.5794630000000000	.8017970000000000	DT
+	.3497180000000000	.5568900000000000	DT
+	.8842940000000000	.7118950000000000	DT
+	.2977000000000000	.4177820000000000	DT
+	.4743430000000000	.1964660000000000	DT
+	.0672320000000000	.3431750000000000	DT
+	.7338910000000000	.0652110000000000	DT
+	.7078420000000000	.7901840000000000	DT
+	.8371640000000000	.8381500000000000	DT
+	.1525670000000000	.9847260000000000	DT
+
+%%EndSetup
+
+DEBUG ALGO: num_verts=20 <= 8? NO, num_edges=33 <= 12? NO
+DEBUG ALGO: Forcing BRANCH-AND-CUT for multi-objective optimization (vertices=20 > 1)
+
+=== COST NORMALIZATION ===
+DEBUG NORMALIZE: Using TREE-LEVEL normalization with BOUNDING BOX DIAGONAL
+DEBUG NORMALIZE: Bounding box: (41680.000000,65211.000000) to (978131.000000,984726.000000)
+DEBUG NORMALIZE: Width=936451.000000, Height=919515.000000, Diagonal=1312420.782610
+DEBUG NORMALIZE: FST 0: 250244.742904 / 1312420.782610 = 0.190674
+DEBUG NORMALIZE: FST 1: 229765.095574 / 1312420.782610 = 0.175070
+DEBUG NORMALIZE: FST 2: 250150.989113 / 1312420.782610 = 0.190603
+DEBUG NORMALIZE: FST 3: 387432.444185 / 1312420.782610 = 0.295204
+DEBUG NORMALIZE: FST 4: 195162.662175 / 1312420.782610 = 0.148704
+=== NORMALIZATION COMPLETE ===
+
+DEBUG SPANNING: Adding INEQUALITY spanning constraint for battery-aware mode
+DEBUG SPANNING: Added EQUALITY spanning constraint: Σ(|FST|-1)*x + Σnot_covered = 19
+DEBUG CONSTRAINT: Adding soft cutset constraints with not_covered variables
+DEBUG CONSTRAINT: Added constraint x[0] + not_covered[0] ≤ 1 for terminal 0
+DEBUG CONSTRAINT: Added constraint x[1] + not_covered[0] ≤ 1 for terminal 0
+DEBUG CONSTRAINT: Added constraint x[2] + not_covered[0] ≤ 1 for terminal 0
+DEBUG CONSTRAINT: Added constraint x[10] + not_covered[0] ≤ 1 for terminal 0
+DEBUG CONSTRAINT: Added constraint x[13] + not_covered[0] ≤ 1 for terminal 0
+DEBUG CONSTRAINT: Added constraint x[18] + not_covered[0] ≤ 1 for terminal 0
+DEBUG CONSTRAINT: Added constraint x[19] + not_covered[0] ≤ 1 for terminal 0
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 7·not_covered[0] ≤ 7 for terminal 0
+DEBUG CONSTRAINT: Added constraint x[3] + not_covered[1] ≤ 1 for terminal 1
+DEBUG CONSTRAINT: Added constraint x[8] + not_covered[1] ≤ 1 for terminal 1
+DEBUG CONSTRAINT: Added constraint x[12] + not_covered[1] ≤ 1 for terminal 1
+DEBUG CONSTRAINT: Added constraint x[15] + not_covered[1] ≤ 1 for terminal 1
+DEBUG CONSTRAINT: Added constraint x[29] + not_covered[1] ≤ 1 for terminal 1
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 5·not_covered[1] ≤ 5 for terminal 1
+DEBUG CONSTRAINT: Added constraint x[14] + not_covered[2] ≤ 1 for terminal 2
+DEBUG CONSTRAINT: Added constraint x[30] + not_covered[2] ≤ 1 for terminal 2
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 2·not_covered[2] ≤ 2 for terminal 2
+DEBUG CONSTRAINT: Added constraint x[0] + not_covered[3] ≤ 1 for terminal 3
+DEBUG CONSTRAINT: Added constraint x[1] + not_covered[3] ≤ 1 for terminal 3
+DEBUG CONSTRAINT: Added constraint x[5] + not_covered[3] ≤ 1 for terminal 3
+DEBUG CONSTRAINT: Added constraint x[10] + not_covered[3] ≤ 1 for terminal 3
+DEBUG CONSTRAINT: Added constraint x[13] + not_covered[3] ≤ 1 for terminal 3
+DEBUG CONSTRAINT: Added constraint x[19] + not_covered[3] ≤ 1 for terminal 3
+DEBUG CONSTRAINT: Added constraint x[25] + not_covered[3] ≤ 1 for terminal 3
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 7·not_covered[3] ≤ 7 for terminal 3
+DEBUG CONSTRAINT: Added constraint x[2] + not_covered[4] ≤ 1 for terminal 4
+DEBUG CONSTRAINT: Added constraint x[3] + not_covered[4] ≤ 1 for terminal 4
+DEBUG CONSTRAINT: Added constraint x[12] + not_covered[4] ≤ 1 for terminal 4
+DEBUG CONSTRAINT: Added constraint x[21] + not_covered[4] ≤ 1 for terminal 4
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 4·not_covered[4] ≤ 4 for terminal 4
+DEBUG CONSTRAINT: Added constraint x[26] + not_covered[5] ≤ 1 for terminal 5
+DEBUG CONSTRAINT: Added constraint x[31] + not_covered[5] ≤ 1 for terminal 5
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 2·not_covered[5] ≤ 2 for terminal 5
+DEBUG CONSTRAINT: Added constraint x[4] + not_covered[6] ≤ 1 for terminal 6
+DEBUG CONSTRAINT: Added constraint x[17] + not_covered[6] ≤ 1 for terminal 6
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 2·not_covered[6] ≤ 2 for terminal 6
+DEBUG CONSTRAINT: Added constraint x[4] + not_covered[7] ≤ 1 for terminal 7
+DEBUG CONSTRAINT: Added constraint x[6] + not_covered[7] ≤ 1 for terminal 7
+DEBUG CONSTRAINT: Added constraint x[16] + not_covered[7] ≤ 1 for terminal 7
+DEBUG CONSTRAINT: Added constraint x[17] + not_covered[7] ≤ 1 for terminal 7
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 4·not_covered[7] ≤ 4 for terminal 7
+DEBUG CONSTRAINT: Added constraint x[14] + not_covered[8] ≤ 1 for terminal 8
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 1·not_covered[8] ≤ 1 for terminal 8
+DEBUG CONSTRAINT: Added constraint x[7] + not_covered[9] ≤ 1 for terminal 9
+DEBUG CONSTRAINT: Added constraint x[11] + not_covered[9] ≤ 1 for terminal 9
+DEBUG CONSTRAINT: Added constraint x[27] + not_covered[9] ≤ 1 for terminal 9
+DEBUG CONSTRAINT: Added constraint x[31] + not_covered[9] ≤ 1 for terminal 9
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 4·not_covered[9] ≤ 4 for terminal 9
+DEBUG CONSTRAINT: Added constraint x[20] + not_covered[10] ≤ 1 for terminal 10
+DEBUG CONSTRAINT: Added constraint x[32] + not_covered[10] ≤ 1 for terminal 10
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 2·not_covered[10] ≤ 2 for terminal 10
+DEBUG CONSTRAINT: Added constraint x[5] + not_covered[11] ≤ 1 for terminal 11
+DEBUG CONSTRAINT: Added constraint x[10] + not_covered[11] ≤ 1 for terminal 11
+DEBUG CONSTRAINT: Added constraint x[11] + not_covered[11] ≤ 1 for terminal 11
+DEBUG CONSTRAINT: Added constraint x[13] + not_covered[11] ≤ 1 for terminal 11
+DEBUG CONSTRAINT: Added constraint x[24] + not_covered[11] ≤ 1 for terminal 11
+DEBUG CONSTRAINT: Added constraint x[32] + not_covered[11] ≤ 1 for terminal 11
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 6·not_covered[11] ≤ 6 for terminal 11
+DEBUG CONSTRAINT: Added constraint x[6] + not_covered[12] ≤ 1 for terminal 12
+DEBUG CONSTRAINT: Added constraint x[9] + not_covered[12] ≤ 1 for terminal 12
+DEBUG CONSTRAINT: Added constraint x[22] + not_covered[12] ≤ 1 for terminal 12
+DEBUG CONSTRAINT: Added constraint x[30] + not_covered[12] ≤ 1 for terminal 12
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 4·not_covered[12] ≤ 4 for terminal 12
+DEBUG CONSTRAINT: Added constraint x[0] + not_covered[13] ≤ 1 for terminal 13
+DEBUG CONSTRAINT: Added constraint x[5] + not_covered[13] ≤ 1 for terminal 13
+DEBUG CONSTRAINT: Added constraint x[7] + not_covered[13] ≤ 1 for terminal 13
+DEBUG CONSTRAINT: Added constraint x[10] + not_covered[13] ≤ 1 for terminal 13
+DEBUG CONSTRAINT: Added constraint x[11] + not_covered[13] ≤ 1 for terminal 13
+DEBUG CONSTRAINT: Added constraint x[13] + not_covered[13] ≤ 1 for terminal 13
+DEBUG CONSTRAINT: Added constraint x[24] + not_covered[13] ≤ 1 for terminal 13
+DEBUG CONSTRAINT: Added constraint x[25] + not_covered[13] ≤ 1 for terminal 13
+DEBUG CONSTRAINT: Added constraint x[28] + not_covered[13] ≤ 1 for terminal 13
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 9·not_covered[13] ≤ 9 for terminal 13
+DEBUG CONSTRAINT: Added constraint x[1] + not_covered[14] ≤ 1 for terminal 14
+DEBUG CONSTRAINT: Added constraint x[2] + not_covered[14] ≤ 1 for terminal 14
+DEBUG CONSTRAINT: Added constraint x[3] + not_covered[14] ≤ 1 for terminal 14
+DEBUG CONSTRAINT: Added constraint x[8] + not_covered[14] ≤ 1 for terminal 14
+DEBUG CONSTRAINT: Added constraint x[12] + not_covered[14] ≤ 1 for terminal 14
+DEBUG CONSTRAINT: Added constraint x[13] + not_covered[14] ≤ 1 for terminal 14
+DEBUG CONSTRAINT: Added constraint x[18] + not_covered[14] ≤ 1 for terminal 14
+DEBUG CONSTRAINT: Added constraint x[21] + not_covered[14] ≤ 1 for terminal 14
+DEBUG CONSTRAINT: Added constraint x[29] + not_covered[14] ≤ 1 for terminal 14
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 9·not_covered[14] ≤ 9 for terminal 14
+DEBUG CONSTRAINT: Added constraint x[7] + not_covered[15] ≤ 1 for terminal 15
+DEBUG CONSTRAINT: Added constraint x[11] + not_covered[15] ≤ 1 for terminal 15
+DEBUG CONSTRAINT: Added constraint x[27] + not_covered[15] ≤ 1 for terminal 15
+DEBUG CONSTRAINT: Added constraint x[28] + not_covered[15] ≤ 1 for terminal 15
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 4·not_covered[15] ≤ 4 for terminal 15
+DEBUG CONSTRAINT: Added constraint x[8] + not_covered[16] ≤ 1 for terminal 16
+DEBUG CONSTRAINT: Added constraint x[12] + not_covered[16] ≤ 1 for terminal 16
+DEBUG CONSTRAINT: Added constraint x[15] + not_covered[16] ≤ 1 for terminal 16
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 3·not_covered[16] ≤ 3 for terminal 16
+DEBUG CONSTRAINT: Added constraint x[9] + not_covered[17] ≤ 1 for terminal 17
+DEBUG CONSTRAINT: Added constraint x[20] + not_covered[17] ≤ 1 for terminal 17
+DEBUG CONSTRAINT: Added constraint x[23] + not_covered[17] ≤ 1 for terminal 17
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 3·not_covered[17] ≤ 3 for terminal 17
+DEBUG CONSTRAINT: Added constraint x[4] + not_covered[18] ≤ 1 for terminal 18
+DEBUG CONSTRAINT: Added constraint x[6] + not_covered[18] ≤ 1 for terminal 18
+DEBUG CONSTRAINT: Added constraint x[9] + not_covered[18] ≤ 1 for terminal 18
+DEBUG CONSTRAINT: Added constraint x[16] + not_covered[18] ≤ 1 for terminal 18
+DEBUG CONSTRAINT: Added constraint x[22] + not_covered[18] ≤ 1 for terminal 18
+DEBUG CONSTRAINT: Added constraint x[23] + not_covered[18] ≤ 1 for terminal 18
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 6·not_covered[18] ≤ 6 for terminal 18
+DEBUG CONSTRAINT: Added constraint x[26] + not_covered[19] ≤ 1 for terminal 19
+DEBUG CONSTRAINT: Added constraint Σx[FSTs] + 1·not_covered[19] ≤ 1 for terminal 19
+DEBUG CONSTRAINT: Added source terminal constraint: not_covered[0] = 0
+DEBUG BUDGET: Adding budget constraint ≤ 1.600 to constraint pool
+DEBUG BUDGET: Tree costs are ALREADY NORMALIZED by bounding box diagonal
+DEBUG BUDGET: Scale factor: 1000000
+DEBUG BUDGET: Building budget constraint coefficients (NO double normalization):
+DEBUG BUDGET:   x[0] coefficient = 190674 (normalized_tree_cost=0.190674)
+DEBUG BUDGET:   x[1] coefficient = 175069 (normalized_tree_cost=0.175070)
+DEBUG BUDGET:   x[2] coefficient = 190602 (normalized_tree_cost=0.190603)
+DEBUG BUDGET:   x[3] coefficient = 295204 (normalized_tree_cost=0.295204)
+DEBUG BUDGET:   x[4] coefficient = 148704 (normalized_tree_cost=0.148704)
+DEBUG BUDGET:   x[5] coefficient = 218146 (normalized_tree_cost=0.218146)
+DEBUG BUDGET:   x[6] coefficient = 177806 (normalized_tree_cost=0.177806)
+DEBUG BUDGET:   x[7] coefficient = 327129 (normalized_tree_cost=0.327130)
+DEBUG BUDGET:   x[8] coefficient = 241673 (normalized_tree_cost=0.241673)
+DEBUG BUDGET:   x[9] coefficient = 200757 (normalized_tree_cost=0.200758)
+DEBUG BUDGET:   x[10] coefficient = 301425 (normalized_tree_cost=0.301426)
+DEBUG BUDGET:   x[11] coefficient = 438767 (normalized_tree_cost=0.438768)
+DEBUG BUDGET:   x[12] coefficient = 333062 (normalized_tree_cost=0.333063)
+DEBUG BUDGET:   x[13] coefficient = 389884 (normalized_tree_cost=0.389884)
+DEBUG BUDGET:   x[14] coefficient = 32170 (normalized_tree_cost=0.032170)
+DEBUG BUDGET:   x[15] coefficient = 39219 (normalized_tree_cost=0.039219)
+DEBUG BUDGET:   x[16] coefficient = 77555 (normalized_tree_cost=0.077556)
+DEBUG BUDGET:   x[17] coefficient = 80038 (normalized_tree_cost=0.080039)
+DEBUG BUDGET:   x[18] coefficient = 88499 (normalized_tree_cost=0.088499)
+DEBUG BUDGET:   x[19] coefficient = 89177 (normalized_tree_cost=0.089178)
+DEBUG BUDGET:   x[20] coefficient = 98217 (normalized_tree_cost=0.098218)
+DEBUG BUDGET:   x[21] coefficient = 102494 (normalized_tree_cost=0.102494)
+DEBUG BUDGET:   x[22] coefficient = 102684 (normalized_tree_cost=0.102684)
+DEBUG BUDGET:   x[23] coefficient = 105096 (normalized_tree_cost=0.105097)
+DEBUG BUDGET:   x[24] coefficient = 113161 (normalized_tree_cost=0.113162)
+DEBUG BUDGET:   x[25] coefficient = 114276 (normalized_tree_cost=0.114276)
+DEBUG BUDGET:   x[26] coefficient = 124034 (normalized_tree_cost=0.124035)
+DEBUG BUDGET:   x[27] coefficient = 164763 (normalized_tree_cost=0.164763)
+DEBUG BUDGET:   x[28] coefficient = 184577 (normalized_tree_cost=0.184577)
+DEBUG BUDGET:   x[29] coefficient = 202621 (normalized_tree_cost=0.202621)
+DEBUG BUDGET:   x[30] coefficient = 218882 (normalized_tree_cost=0.218883)
+DEBUG BUDGET:   x[31] coefficient = 228178 (normalized_tree_cost=0.228178)
+DEBUG BUDGET:   x[32] coefficient = 255863 (normalized_tree_cost=0.255864)
+DEBUG BUDGET: Constraint: Σ (normalized_tree_cost * 1000000) * x[i] ≤ 1600000
+DEBUG BUDGET: Budget constraint added to pool with 33 FSTs
+DEBUG CONSTRAINT: Skipping 'at least one FST' constraint in battery-aware mode (allows zero FSTs if budget too tight)
+ % _gst_initialize_constraint_pool: 0.00 seconds.
+ % Constraint pool initialized with:
+ % 	1	Total degree rows	33	coeffs.
+ % 	20	Cutset rows		85	coeffs.
+ % 	0	Incompatibility rows	0	coeffs.
+ % 	20	2-terminal SEC rows	62	coeffs.
+ % 	1	At least one FST rows	33	coeffs.
+ % 	126	Total rows in pool	106	in LP
+USING GLOBAL NORMALIZATION: max_fst_cost=575847.774292, max_battery_cost=100.000000, alpha=10.0
+OBJ[0]: tree=0.191 (scaled=6.292), battery_sum_cost=-8.260000, obj=-1.967752 (covers 3 terminals)
+OBJ[1]: tree=0.175 (scaled=5.777), battery_sum_cost=-3.220000, obj=2.557300 (covers 3 terminals)
+OBJ[2]: tree=0.191 (scaled=6.290), battery_sum_cost=-5.440000, obj=0.849890 (covers 3 terminals)
+OBJ[3]: tree=0.295 (scaled=9.742), battery_sum_cost=-7.080000, obj=2.661747 (covers 3 terminals)
+OBJ[4]: tree=0.149 (scaled=4.907), battery_sum_cost=-15.000000, obj=-10.092757 (covers 3 terminals)
+OBJ[5]: tree=0.218 (scaled=7.199), battery_sum_cost=-16.490000, obj=-9.291170 (covers 3 terminals)
+OBJ[6]: tree=0.178 (scaled=5.868), battery_sum_cost=-11.960000, obj=-6.092389 (covers 3 terminals)
+OBJ[7]: tree=0.327 (scaled=10.795), battery_sum_cost=-13.700000, obj=-2.904716 (covers 3 terminals)
+OBJ[8]: tree=0.242 (scaled=7.975), battery_sum_cost=-9.610000, obj=-1.634789 (covers 3 terminals)
+OBJ[9]: tree=0.201 (scaled=6.625), battery_sum_cost=-12.620000, obj=-5.994986 (covers 3 terminals)
+OBJ[10]: tree=0.301 (scaled=9.947), battery_sum_cost=-16.490000, obj=-6.542956 (covers 4 terminals)
+OBJ[11]: tree=0.439 (scaled=14.479), battery_sum_cost=-21.930000, obj=-7.450668 (covers 4 terminals)
+OBJ[12]: tree=0.333 (scaled=10.991), battery_sum_cost=-12.180000, obj=-1.188927 (covers 4 terminals)
+OBJ[13]: tree=0.390 (scaled=12.866), battery_sum_cost=-19.360000, obj=-6.493824 (covers 5 terminals)
+OBJ[14]: tree=0.032 (scaled=1.062), battery_sum_cost=-8.740000, obj=-7.678386 (covers 2 terminals)
+OBJ[15]: tree=0.039 (scaled=1.294), battery_sum_cost=-6.740000, obj=-5.445768 (covers 2 terminals)
+OBJ[16]: tree=0.078 (scaled=2.559), battery_sum_cost=-10.360000, obj=-7.800665 (covers 2 terminals)
+OBJ[17]: tree=0.080 (scaled=2.641), battery_sum_cost=-8.220000, obj=-5.578716 (covers 2 terminals)
+OBJ[18]: tree=0.088 (scaled=2.920), battery_sum_cost=-2.870000, obj=0.050477 (covers 2 terminals)
+OBJ[19]: tree=0.089 (scaled=2.943), battery_sum_cost=-0.350000, obj=2.592861 (covers 2 terminals)
+OBJ[20]: tree=0.098 (scaled=3.241), battery_sum_cost=-9.120000, obj=-5.878810 (covers 2 terminals)
+OBJ[21]: tree=0.102 (scaled=3.382), battery_sum_cost=-5.440000, obj=-2.057689 (covers 2 terminals)
+OBJ[22]: tree=0.103 (scaled=3.389), battery_sum_cost=-8.380000, obj=-4.991422 (covers 2 terminals)
+OBJ[23]: tree=0.105 (scaled=3.468), battery_sum_cost=-11.020000, obj=-7.551815 (covers 2 terminals)
+OBJ[24]: tree=0.113 (scaled=3.734), battery_sum_cost=-16.140000, obj=-12.405666 (covers 2 terminals)
+OBJ[25]: tree=0.114 (scaled=3.771), battery_sum_cost=-8.260000, obj=-4.488879 (covers 2 terminals)
+OBJ[26]: tree=0.124 (scaled=4.093), battery_sum_cost=-10.290000, obj=-6.196851 (covers 2 terminals)
+OBJ[27]: tree=0.165 (scaled=5.437), battery_sum_cost=-5.790000, obj=-0.352806 (covers 2 terminals)
+OBJ[28]: tree=0.185 (scaled=6.091), battery_sum_cost=-8.410000, obj=-2.318950 (covers 2 terminals)
+OBJ[29]: tree=0.203 (scaled=6.687), battery_sum_cost=-4.510000, obj=2.176505 (covers 2 terminals)
+OBJ[30]: tree=0.219 (scaled=7.223), battery_sum_cost=-5.330000, obj=1.893129 (covers 2 terminals)
+OBJ[31]: tree=0.228 (scaled=7.530), battery_sum_cost=-11.440000, obj=-3.910110 (covers 2 terminals)
+OBJ[32]: tree=0.256 (scaled=8.444), battery_sum_cost=-13.110000, obj=-4.666498 (covers 2 terminals)
+DEBUG SCALE: Skipping objective scaling in battery-aware budget mode
+ % cpx allocation: 252 rows, 53 cols, 1680 nz
+ % _gst_build_initial_formulation: 0.00 seconds.
+DEBUG CPLEX: Set MIP gap tolerance (epgap) to 0.05 (5%)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %      10     9      -68.9870                    -68.9316   x25 D     3     3
+
+
+
+ %      11    10      -68.9316                    -68.4913    x0 D     5     4
+
+
+
+
+
+
+
+
+
+ %      20    13      -67.8676                    -67.8276   x31 D     2     2
+
+
+
+ %      12    14      -67.8276                    -67.7533    x0 U     5     4
+
+
+
+ %      13    15      -67.7533                    -67.5973   x15 D     7     5
+
+
+
+ %      15    16      -67.4614                    -67.3816   x24 U    10     4
+
+
+
+ %      19    17      -67.3816                    -67.3578   x31 U     2     2
+
+
+
+ %      14    18      -67.3578                    -67.3354   x15 U     7     5
+
+
+
+ %      24    19      -67.2810                    -67.2612   x28 D    20     3
+
+
+
+
+
+
+ %      23    21      -66.9553                    -66.8197   x28 U    20     3
+
+
+
+ %      16    22      -66.4857                    -66.4684   x24 D    10     4
+
+
+
+ %      18    23      -66.2023                    -66.1444   x15 D    11     5
+
+
+
+ %      22    24      -66.0276                    -66.0256   x15 D     9     4
+
+
+
+ %      35    25      -66.0256                    -65.9940    x7 D    24     4
+
+
+
+ %      37    26      -65.9018                    -65.8901    x0 D     8     5
+
+
+
+ %      32    27      -65.8901                    -65.8516   x25 D    19     3
+
+
+
+ %      39    28      -65.8516                    -65.5607    x0 D    23     4
+
+
+
+ %      33    29      -65.5542                    -65.4931    x0 D    14     6
+
+
+
+ %      30    30      -65.4931                    -65.4474   x15 D    15     5
+
+
+
+ %      41    31      -65.4349                    -65.4049    x5 D    16     5
+
+
+
+ %      21    32      -65.4049                    -65.3765   x15 U     9     4
+
+
+
+ %      25    33      -65.3765                    -65.3458   x15 D    12     5
+
+
+
+ %      27    34      -65.3451                    -65.3392   x12 D    13     6
+
+
+
+ %      49    35      -65.3392                    -65.3215    x8 D    37     6
+
+
+
+ %      57    36      -65.3215                    -65.2516    x7 D    30     6
+
+
+
+ %      29    37      -65.2516                    -65.2176   x15 U    15     5
+
+
+
+ %      17    38      -65.0582                    -65.0552   x15 U    11     5
+
+
+
+ %      45    39      -65.0552                    -64.9165   x23 U    22     5
+
+
+
+ %      38    40      -64.8017                    -64.7757    x0 U     8     5
+
+
+
+ %      55    41      -64.7757                    -64.7588    x3 D    33     7
+
+
+
+ %      40    42      -64.7588                    -64.7065    x0 U    23     4
+
+
+
+ %      31    43      -64.7065                    -64.6566   x25 U    19     3
+
+
+
+ %      64    44      -64.6046                    -64.5583    x2 D    25     6
+
+
+
+ %      47    45      -64.4667                    -64.4364   x15 D    35     5
+
+
+
+ %      69    46      -64.4364                    -64.3838   x21 D    57     7
+
+
+
+ %      26    47      -64.1694                    -64.1537   x15 U    12     5
+
+
+
+ %      51    48      -64.1537                    -64.1487   x24 U    32     4
+
+
+
+ %      48    49      -64.1094                    -64.0903   x15 U    35     5
+
+
+
+ %      34    50      -64.0823                    -64.0483    x0 U    14     6
+
+
+
+ %      36    51      -64.0483                    -64.0383    x7 U    24     4
+
+
+
+ %      43    52      -63.9581                    -63.9559   x12 D    18     6
+
+
+
+ %      65    53      -63.9559                    -63.8738   x21 D    27     7
+
+
+
+ %      79    54      -63.5972                    -63.5643   x21 D    55     8
+
+
+
+ %      58    55      -63.4503                    -63.4274    x7 U    30     6
+
+
+
+ %      75    56      -63.4274                    -63.4192    x6 D    45     6
+
+
+
+ %      72    57      -63.3675                    -63.3612   x22 D    29     6
+
+
+
+ %      52    58      -63.3612                    -63.3327   x24 D    32     4
+
+
+
+ %      73    59      -63.3327                    -63.3283   x21 D    17     6
+
+
+
+ %      67    60      -63.1919                    -63.1704   x12 D    49     7
+
+
+
+ %      93    61      -63.1704                    -63.0930    x8 D    51     5
+
+
+
+ %      89    62      -63.0930                    -63.0783    x6 D    69     8
+
+
+
+ %      54    63      -63.0660                    -63.0164   x15 D    39     5
+
+
+
+ %      60    64      -63.0164                    -62.9430   x10 D    41     6
+
+
+
+ %      77    65      -62.8900                    -62.8768   x15 U    38     6
+
+
+
+ %      99    66      -62.8768                    -62.8469    x0 D    36     5
+
+
+
+ %      78    67      -62.8006                    -62.7827   x15 D    38     6
+
+
+
+ %      61    68      -62.6679                    -62.6232    x6 D    21     5
+
+
+
+ %      91    69      -62.5773                    -62.5629    x2 D    26     6
+
+
+
+ %      97    70      -62.5342                    -62.4885    x2 D    34     7
+
+
+
+
+
+
+ %      66    72      -62.4867                    -62.4646   x21 U    27     7
+
+
+
+
+
+
+
+
+
+
+
+
+ %      95    76      -62.3455                    -62.3371    x0 D    48     6
+
+
+
+
+
+
+ %      81    78      -62.2870                    -62.2790   x15 D    40     5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %      87    83      -62.0752                    -62.0687   x12 D    47     6
+
+
+
+
+
+
+
+
+
+ %      80    86      -61.8772                    -61.8766   x21 U    55     8
+
+
+
+
+
+
+
+
+
+
+
+
+ %      53    90      -61.6197                    -61.6126   x15 U    39     5
+
+
+
+
+
+
+
+
+
+ %      83    93      -61.5386                    -61.5203   x15 D    31     4
+
+
+
+
+
+
+ %      85    95      -61.4030                    -61.3821   x12 D    64     7
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %      42   103      -61.0877                    -61.0592    x5 U    16     5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %      74   114      -60.7835                    -60.7777   x21 U    17     6
+
+
+
+
+
+
+
+
+
+ %      96   117      -60.6992                    -60.6861    x0 U    48     6
+
+
+
+
+
+
+ %      70   119      -60.6668                    -60.6623   x21 U    57     7
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %      82   130      -60.3884                    -60.3494   x15 U    40     5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %      46   135      -60.0589                    -60.0361   x23 D    22     5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %      84   152      -59.7286                    -59.7228   x15 U    31     4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %      71   158      -59.6642                    -59.6496   x22 U    29     6
+
+
+
+
+
+
+
+
+
+ %      59   161      -59.6134                    -59.6081   x10 U    41     6
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %      56   175      -59.3673                    -59.3670    x3 U    33     7
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   % @PL 42 rows, 53 cols, 186 nonzeros, 6 slack, 36 tight.
+   % @D deleting 6 slack rows
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %      28   196      -59.1106                    -59.1068   x12 U    13     6
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   % @PL 43 rows, 53 cols, 181 nonzeros, 2 slack, 41 tight.
+   % @D deleting 2 slack rows
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DEBUG IFS: Budget mode - accepting integer solution with 11 edges covering 13 vertices
+ %  	=== 206 nodes cut off ===
+ % @UO 0.29  -0.00005894555173875989 0.0000000000
+ % @UN 0.29  -0.00005894555173875989 0.0000000000
+ %   % DEBUG LP_VARS: Optimal variable values:
+ %   % DEBUG LP_VARS: x[0] = 1.000000 (FST 0)
+ %   % DEBUG LP_VARS: x[1] = 0.000000 (FST 1)
+ %   % DEBUG LP_VARS: x[2] = 0.000000 (FST 2)
+ %   % DEBUG LP_VARS: x[3] = 0.000000 (FST 3)
+ %   % DEBUG LP_VARS: x[4] = 0.000000 (FST 4)
+ %   % DEBUG LP_VARS: x[5] = 0.000000 (FST 5)
+ %   % DEBUG LP_VARS: x[6] = 0.000000 (FST 6)
+ %   % DEBUG LP_VARS: x[7] = 0.000000 (FST 7)
+ %   % DEBUG LP_VARS: x[8] = 0.000000 (FST 8)
+ %   % DEBUG LP_VARS: x[9] = 0.000000 (FST 9)
+ %   % DEBUG LP_VARS: x[10] = 0.000000 (FST 10)
+ %   % DEBUG LP_VARS: x[11] = 0.000000 (FST 11)
+ %   % DEBUG LP_VARS: x[12] = 0.000000 (FST 12)
+ %   % DEBUG LP_VARS: x[13] = 0.000000 (FST 13)
+ %   % DEBUG LP_VARS: x[14] = 1.000000 (FST 14)
+ %   % DEBUG LP_VARS: x[15] = 0.000000 (FST 15)
+ %   % DEBUG LP_VARS: x[16] = 1.000000 (FST 16)
+ %   % DEBUG LP_VARS: x[17] = 1.000000 (FST 17)
+ %   % DEBUG LP_VARS: x[18] = 0.000000 (FST 18)
+ %   % DEBUG LP_VARS: x[19] = 0.000000 (FST 19)
+ %   % DEBUG LP_VARS: x[20] = 1.000000 (FST 20)
+ %   % DEBUG LP_VARS: x[21] = 0.000000 (FST 21)
+ %   % DEBUG LP_VARS: x[22] = 1.000000 (FST 22)
+ %   % DEBUG LP_VARS: x[23] = 1.000000 (FST 23)
+ %   % DEBUG LP_VARS: x[24] = 1.000000 (FST 24)
+ %   % DEBUG LP_VARS: x[25] = 0.000000 (FST 25)
+ %   % DEBUG LP_VARS: x[26] = 0.000000 (FST 26)
+ %   % DEBUG LP_VARS: x[27] = 0.000000 (FST 27)
+ %   % DEBUG LP_VARS: x[28] = 1.000000 (FST 28)
+ %   % DEBUG LP_VARS: x[29] = 0.000000 (FST 29)
+ %   % DEBUG LP_VARS: x[30] = 1.000000 (FST 30)
+ %   % DEBUG LP_VARS: x[31] = 0.000000 (FST 31)
+ %   % DEBUG LP_VARS: x[32] = 1.000000 (FST 32)
+ %   % DEBUG LP_VARS: not_covered[0] = 0.000000 (terminal 0)
+ %   % DEBUG LP_VARS: not_covered[1] = 1.000000 (terminal 1)
+ %   % DEBUG LP_VARS: not_covered[2] = 0.000000 (terminal 2)
+ %   % DEBUG LP_VARS: not_covered[3] = 0.000000 (terminal 3)
+ %   % DEBUG LP_VARS: not_covered[4] = 1.000000 (terminal 4)
+ %   % DEBUG LP_VARS: not_covered[5] = 1.000000 (terminal 5)
+ %   % DEBUG LP_VARS: not_covered[6] = 0.000000 (terminal 6)
+ %   % DEBUG LP_VARS: not_covered[7] = 0.000000 (terminal 7)
+ %   % DEBUG LP_VARS: not_covered[8] = 0.000000 (terminal 8)
+ %   % DEBUG LP_VARS: not_covered[9] = 1.000000 (terminal 9)
+ %   % DEBUG LP_VARS: not_covered[10] = 0.000000 (terminal 10)
+ %   % DEBUG LP_VARS: not_covered[11] = 0.000000 (terminal 11)
+ %   % DEBUG LP_VARS: not_covered[12] = 0.000000 (terminal 12)
+ %   % DEBUG LP_VARS: not_covered[13] = 0.000000 (terminal 13)
+ %   % DEBUG LP_VARS: not_covered[14] = 1.000000 (terminal 14)
+ %   % DEBUG LP_VARS: not_covered[15] = 0.000000 (terminal 15)
+ %   % DEBUG LP_VARS: not_covered[16] = 1.000000 (terminal 16)
+ %   % DEBUG LP_VARS: not_covered[17] = 0.000000 (terminal 17)
+ %   % DEBUG LP_VARS: not_covered[18] = 0.000000 (terminal 18)
+ %   % DEBUG LP_VARS: not_covered[19] = 1.000000 (terminal 19)
+ %   % CPLEX_POSTSCRIPT_FST_LIST:
+ %  % fs0: 13 3 0
+ %  % fs14: 8 2
+ %  % fs16: 18 7
+ %  % fs17: 7 6
+ %  % fs20: 17 10
+ %  % fs22: 12 18
+ %  % fs23: 18 17
+ %  % fs24: 11 13
+ %  % fs28: 13 15
+ %  % fs30: 2 12
+ %  % fs32: 11 10
+
+ %   % ========================================
+ %   % SOLUTION COST BREAKDOWN
+ %   % ========================================
+ %   % Selected FSTs:           11
+ %   % Covered Terminals:       13 / 20 (65.0%)
+ %   % Uncovered Terminals:     7
+ %   % 
+ %   % Tree Length Cost (Normalized): 1.458923
+ %   % Tree Length Cost (Raw):        840117.38
+ %   % Battery Cost (Estimated):      514.50
+ %   % 
+ %   % Budget Used:             1.458923
+ %   % Budget Limit:            1.600000
+ %   % Budget Utilization:      91.18%
+ %   % ========================================
+
+ % @UO 0.29  -0.00005894555173875989 0.0000000000
+ % @UN 0.29  -0.00007492905780256913 21.3315188160
+ % *   363     0      -58.9456      -74.9291                 x27 D   261    12
+LP_OBJECTIVE_VALUE: -74.929057802569133
+BB_NODES: 254
+BB_LPS: 402
+
+ % Certificate of solution:
+ % @C	.4068140150900659	.2741626365990862
+ % @C	.1155595425914978	.4222915074628269
+%%Page: 1 1
+BeginPlot
+	Plot_Terminals
+ % fs1: 14 0 3
+	14 T	.4068140150900659	.2741626365990862	S
+	.4068140150900659	.2741626365990862	0 T	S
+	.4068140150900659	.2741626365990862	3 T	S
+ % fs7: 15 9 13
+	15 T	.1155595425914978	.4222915074628269	S
+	.1155595425914978	.4222915074628269	9 T	S
+	.1155595425914978	.4222915074628269	13 T	S
+ % fs14: 8 2
+	8 T	2 T	S
+ % fs15: 16 1
+	16 T	1 T	S
+ % fs16: 18 7
+	18 T	7 T	S
+ % fs17: 7 6
+	7 T	6 T	S
+ % fs20: 17 10
+	17 T	10 T	S
+ % fs21: 14 4
+	14 T	4 T	S
+ % fs22: 12 18
+	12 T	18 T	S
+ % fs23: 18 17
+	18 T	17 T	S
+ % fs24: 11 13
+	11 T	13 T	S
+ % fs25: 13 3
+	13 T	3 T	S
+ % fs26: 19 5
+	19 T	5 T	S
+ % fs29: 1 14
+	1 T	14 T	S
+ % fs30: 2 12
+	2 T	12 T	S
+ % fs31: 9 5
+	9 T	5 T	S
+ % fs32: 11 10
+	11 T	10 T	S
+  (Euclidean SMT:  20 points,  length = -.0000749290578025,  0.29 seconds)
+EndPlot
+
+% @0 Euclidean SMT
+% N M Nodes LPs P1CPU P2CPU TotCPU
+% @1 20 33 254 402 0.00 0.29 0.29
+% Z RootZ %Gap RootLPs RootCPU RedMST
+% @2 -74.929058 -72.725702 2.94059 1 0.00 0.0000
+% InitPRows InitPNZ InitLPRows InitLPNZ
+% @3 126 420 106 358
+% RootPRows RootPNZ RootLPRows RootLPNZ
+% @4 126 420 43 177
+% FinalPRows FinalPNZ FinalLPRows FinalLPNZ
+% @5 126 420 40 174
+% SMTFSTs SMTAvgFSTSz SMTMaxFSTSz #2FSTs #3FSTs ... #10FSTS #>10FSTs
+% @6 17 2.117647 3 15 2 0 0 0 0 0 0 0 0

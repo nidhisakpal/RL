@@ -1,0 +1,2 @@
+edge_map.o edge_map.lo edge_map.dep : edge_map.c edge_map.h steiner.h bitmaskmacros.h gsttypes.h \
+ geomtypes.h memory.h logic.h
