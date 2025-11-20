@@ -39,6 +39,15 @@
 #include <math.h>
 #include <ctype.h>
 
+/* GeoSteiner library includes */
+#include "geosteiner.h"
+#include "gsttypes.h"
+#include "logic.h"
+#include "memory.h"
+#include "point.h"
+#include "steiner.h"
+#include "io.h"  /* For UNSCALE macro */
+
 /* Data structures for visualization */
 typedef struct {
     double x, y;
@@ -52,11 +61,18 @@ typedef struct {
 } SteinerPoint;
 
 typedef struct {
+    int from;  /* Node ID: positive = terminal position (1-based), negative = Steiner point */
+    int to;    /* Node ID: positive = terminal position (1-based), negative = Steiner point */
+} Edge;
+
+typedef struct {
     int selected;
     int num_terminals;
     int terminal_ids[10];
     int num_steiner_points;
     SteinerPoint steiner_points[10];
+    int num_edges;
+    Edge edges[20];  /* Max edges for a small FST */
     double cost;
     int fst_id;
 } FST;
@@ -729,6 +745,41 @@ static void create_rich_visualization(const char* terminals_file, const char* fs
 	FST selected_fsts[50];
 	int num_selected_fsts = parse_fsts_from_solution(solution_file, selected_fsts, 50);
 
+	/* Copy edge topology and Steiner data from all_fsts to selected_fsts */
+	for (int sel = 0; sel < num_selected_fsts; sel++) {
+		for (int all = 0; all < num_all_fsts; all++) {
+			/* Match by comparing terminal sets */
+			if (selected_fsts[sel].num_terminals != all_fsts[all].num_terminals) continue;
+
+			int match = 1;
+			for (int t = 0; t < selected_fsts[sel].num_terminals && match; t++) {
+				int found = 0;
+				for (int u = 0; u < all_fsts[all].num_terminals; u++) {
+					if (selected_fsts[sel].terminal_ids[t] == all_fsts[all].terminal_ids[u]) {
+						found = 1;
+						break;
+					}
+				}
+				if (!found) match = 0;
+			}
+
+			if (match) {
+				/* Copy Steiner points and edges */
+				selected_fsts[sel].num_steiner_points = all_fsts[all].num_steiner_points;
+				for (int s = 0; s < all_fsts[all].num_steiner_points && s < 10; s++) {
+					selected_fsts[sel].steiner_points[s] = all_fsts[all].steiner_points[s];
+				}
+				selected_fsts[sel].num_edges = all_fsts[all].num_edges;
+				for (int e = 0; e < all_fsts[all].num_edges && e < 20; e++) {
+					selected_fsts[sel].edges[e] = all_fsts[all].edges[e];
+				}
+				printf("DEBUG: Copied topology from all_fsts[%d] to selected_fsts[%d]: %d edges, %d Steiner points\n",
+				       all, sel, all_fsts[all].num_edges, all_fsts[all].num_steiner_points);
+				break;
+			}
+		}
+	}
+
 	if (verbose) {
 		printf("   Found %d total FSTs from efst output\n", num_all_fsts);
 		if (num_all_fsts > 0) {
@@ -749,7 +800,7 @@ static void create_rich_visualization(const char* terminals_file, const char* fs
 
 	/* Reorder FST terminals using MST for optimal visualization */
 	for (i = 0; i < num_all_fsts; i++) {
-		if (all_fsts[i].num_terminals > 2 && all_fsts[i].num_steiner_points == 0) {
+		if (0) { /* DISABLED: MST reordering - will use V3 edge topology instead */
 			int num_fst_terminals = all_fsts[i].num_terminals;
 			int *mst_order = (int *)malloc(num_fst_terminals * sizeof(int));
 			int *visited = (int *)calloc(num_fst_terminals, sizeof(int));
@@ -838,109 +889,134 @@ static void create_rich_visualization(const char* terminals_file, const char* fs
 			printf("\n");
 		}
 
-		if (selected_fsts[i].num_steiner_points > 0) {
-			/* FST with Steiner point - draw Y-junction (proper tree structure) */
-			int sx, sy;
-			scale_coordinates(selected_fsts[i].steiner_points[0].x, selected_fsts[i].steiner_points[0].y, &sx, &sy);
-
-			/* Draw lines from Steiner point to each terminal with edge length labels */
-			for (int j = 0; j < selected_fsts[i].num_terminals; j++) {
-				int term_id = selected_fsts[i].terminal_ids[j];
-				if (term_id >= 0 && term_id < num_terminals) {
-					int tx, ty;
-					scale_coordinates(terminals[term_id].x, terminals[term_id].y, &tx, &ty);
-					fprintf(fp, "                <line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" stroke=\"#3498db\" stroke-width=\"6\" opacity=\"0.7\"/>\n",
-					        sx, sy, tx, ty);
-
-					/* Calculate and display edge length from Steiner point to terminal */
-					double dx = terminals[term_id].x - selected_fsts[i].steiner_points[0].x;
-					double dy = terminals[term_id].y - selected_fsts[i].steiner_points[0].y;
-					double edge_length = sqrt(dx*dx + dy*dy);
-					int mid_x = (sx + tx) / 2;
-					int mid_y = (sy + ty) / 2;
-					/* Draw white background rectangle for text */
-					fprintf(fp, "                <rect x=\"%d\" y=\"%d\" width=\"40\" height=\"14\" fill=\"white\" fill-opacity=\"0.9\" stroke=\"#bdc3c7\" stroke-width=\"1\" rx=\"2\"/>\n",
-					        mid_x - 20, mid_y - 15);
-					fprintf(fp, "                <text x=\"%d\" y=\"%d\" font-size=\"11\" font-weight=\"bold\" fill=\"#2c3e50\" text-anchor=\"middle\" dominant-baseline=\"middle\">%.3f</text>\n",
-					        mid_x, mid_y - 8, edge_length);
-				}
+		/* Use actual FST edge topology from V3 file if available */
+		if (selected_fsts[i].num_edges > 0) {
+			/* Draw actual edges from V3 topology */
+			if (verbose) {
+				printf("  Drawing %d edges from V3 topology\n", selected_fsts[i].num_edges);
 			}
 
-			/* Draw Steiner point */
-			fprintf(fp, "                <circle cx=\"%d\" cy=\"%d\" r=\"5\" fill=\"#5d6d7e\" stroke=\"#34495e\" stroke-width=\"1\"/>\n",
-			        sx, sy);
+			/* First draw Steiner points if present */
+			if (selected_fsts[i].num_steiner_points > 0) {
+				int sx, sy;
+				scale_coordinates(selected_fsts[i].steiner_points[0].x, selected_fsts[i].steiner_points[0].y, &sx, &sy);
+				fprintf(fp, "                <circle cx=\"%d\" cy=\"%d\" r=\"5\" fill=\"#5d6d7e\" stroke=\"#34495e\" stroke-width=\"1\"/>\n",
+				        sx, sy);
+			}
+
+			/* Draw each edge from the V3 topology */
+			for (int e = 0; e < selected_fsts[i].num_edges; e++) {
+				Edge edge = selected_fsts[i].edges[e];
+				double x1 = -999, y1 = -999, x2 = -999, y2 = -999;  /* Initialize to detect errors */
+				int sx1, sy1, sx2, sy2;
+
+				if (verbose) {
+					printf("    Edge %d: [%d -> %d]\n", e, edge.from, edge.to);
+				}
+
+				/* Decode 'from' node */
+				if (edge.from > 0) {
+					/* Positive = terminal position (1-based) in the terminal list */
+					int term_idx = edge.from - 1;  /* Convert to 0-based */
+					if (term_idx >= 0 && term_idx < selected_fsts[i].num_terminals) {
+						int global_term_id = selected_fsts[i].terminal_ids[term_idx];
+						if (global_term_id >= 0 && global_term_id < num_terminals) {
+							x1 = terminals[global_term_id].x;
+							y1 = terminals[global_term_id].y;
+						} else {
+							continue;  /* Invalid terminal */
+						}
+					} else {
+						continue;  /* Invalid index */
+					}
+				} else if (edge.from < 0) {
+					/* Negative = Steiner point index (-1 = first Steiner) */
+					int steiner_idx = (-edge.from) - 1;  /* -1 becomes 0 */
+					if (steiner_idx >= 0 && steiner_idx < selected_fsts[i].num_steiner_points) {
+						x1 = selected_fsts[i].steiner_points[steiner_idx].x;
+						y1 = selected_fsts[i].steiner_points[steiner_idx].y;
+					} else {
+						continue;  /* Invalid Steiner point */
+					}
+				} else {
+					continue;  /* Zero is invalid */
+				}
+
+				/* Decode 'to' node */
+				if (edge.to > 0) {
+					/* Positive = terminal position (1-based) in the terminal list */
+					int term_idx = edge.to - 1;  /* Convert to 0-based */
+					if (term_idx >= 0 && term_idx < selected_fsts[i].num_terminals) {
+						int global_term_id = selected_fsts[i].terminal_ids[term_idx];
+						if (global_term_id >= 0 && global_term_id < num_terminals) {
+							x2 = terminals[global_term_id].x;
+							y2 = terminals[global_term_id].y;
+						} else {
+							continue;  /* Invalid terminal */
+						}
+					} else {
+						continue;  /* Invalid index */
+					}
+				} else if (edge.to < 0) {
+					/* Negative = Steiner point index (-1 = first Steiner) */
+					int steiner_idx = (-edge.to) - 1;  /* -1 becomes 0 */
+					if (steiner_idx >= 0 && steiner_idx < selected_fsts[i].num_steiner_points) {
+						x2 = selected_fsts[i].steiner_points[steiner_idx].x;
+						y2 = selected_fsts[i].steiner_points[steiner_idx].y;
+					} else {
+						continue;  /* Invalid Steiner point */
+					}
+				} else {
+					continue;  /* Zero is invalid */
+				}
+
+				/* Scale coordinates and draw edge */
+				if (x1 == -999 || y1 == -999 || x2 == -999 || y2 == -999) {
+					if (verbose) {
+						printf("      ERROR: Coordinates not set! Skipping edge.\n");
+					}
+					continue;  /* Skip edges with invalid coordinates */
+				}
+
+				scale_coordinates(x1, y1, &sx1, &sy1);
+				scale_coordinates(x2, y2, &sx2, &sy2);
+
+				if (verbose) {
+					printf("      Coords: (%.3f,%.3f) -> (%.3f,%.3f)\n", x1, y1, x2, y2);
+				}
+
+				fprintf(fp, "                <line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" stroke=\"#3498db\" stroke-width=\"6\" opacity=\"0.7\"/>\n",
+				        sx1, sy1, sx2, sy2);
+
+				/* Calculate and display edge length */
+				double dx = x2 - x1;
+				double dy = y2 - y1;
+				double edge_length = sqrt(dx*dx + dy*dy);
+				int mid_x = (sx1 + sx2) / 2;
+				int mid_y = (sy1 + sy2) / 2;
+
+				/* Draw white background rectangle for text */
+				fprintf(fp, "                <rect x=\"%d\" y=\"%d\" width=\"40\" height=\"14\" fill=\"white\" fill-opacity=\"0.9\" stroke=\"#bdc3c7\" stroke-width=\"1\" rx=\"2\"/>\n",
+				        mid_x - 20, mid_y - 15);
+				fprintf(fp, "                <text x=\"%d\" y=\"%d\" font-size=\"11\" font-weight=\"bold\" fill=\"#2c3e50\" text-anchor=\"middle\" dominant-baseline=\"middle\">%.3f</text>\n",
+				        mid_x, mid_y - 8, edge_length);
+
+				if (verbose) {
+					printf("    Edge %d: from %d to %d, length=%.3f\n", e, edge.from, edge.to, edge_length);
+				}
+			}
 		} else {
-			/* Direct connection between terminals - use MST ordering for optimal path */
+			/* No edge topology available - draw sequential terminal-to-terminal edges */
 			int num_fst_terminals = selected_fsts[i].num_terminals;
 
-			/* Reorder terminals using Prim's MST algorithm to minimize total edge length */
-			if (num_fst_terminals > 2) {
-				int *mst_order = (int *)malloc(num_fst_terminals * sizeof(int));
-				int *visited = (int *)calloc(num_fst_terminals, sizeof(int));
-
-				if (mst_order != NULL && visited != NULL) {
-					/* Start MST from first terminal */
-					mst_order[0] = selected_fsts[i].terminal_ids[0];
-					visited[0] = 1;
-
-					/* Build MST by always adding nearest unvisited terminal */
-					for (int k = 1; k < num_fst_terminals; k++) {
-						double min_dist = 1e9;
-						int best_idx = -1;
-
-						/* Find nearest unvisited terminal to any visited terminal */
-						for (int v = 0; v < k; v++) {
-							int visited_term = mst_order[v];
-							for (int u = 0; u < num_fst_terminals; u++) {
-								if (!visited[u]) {
-									int unvisited_term = selected_fsts[i].terminal_ids[u];
-									if (visited_term >= 0 && visited_term < num_terminals &&
-									    unvisited_term >= 0 && unvisited_term < num_terminals) {
-										double dx = terminals[unvisited_term].x - terminals[visited_term].x;
-										double dy = terminals[unvisited_term].y - terminals[visited_term].y;
-										double dist = sqrt(dx*dx + dy*dy);
-										if (dist < min_dist) {
-											min_dist = dist;
-											best_idx = u;
-										}
-									}
-								}
-							}
-						}
-
-						if (best_idx >= 0) {
-							mst_order[k] = selected_fsts[i].terminal_ids[best_idx];
-							visited[best_idx] = 1;
-						}
-					}
-
-					/* Copy MST order back to FST terminal_ids */
-					for (int k = 0; k < num_fst_terminals; k++) {
-						selected_fsts[i].terminal_ids[k] = mst_order[k];
-					}
-
-					if (verbose) {
-						printf("  Reordered terminals for optimal MST: ");
-						for (int k = 0; k < num_fst_terminals; k++) {
-							printf("%d ", mst_order[k]);
-						}
-						printf("\n");
-					}
-				}
-
-				free(mst_order);
-				free(visited);
-			}
-
 			if (verbose) {
-				printf("  Drawing %d MST-ordered edges\n", num_fst_terminals - 1);
+				printf("  No V3 topology, drawing %d sequential edges\n", num_fst_terminals - 1);
 			}
+
 			for (int j = 0; j < num_fst_terminals - 1; j++) {
 				int t1 = selected_fsts[i].terminal_ids[j];
 				int t2 = selected_fsts[i].terminal_ids[j + 1];
-				if (verbose) {
-					printf("    Edge %d: terminal %d to terminal %d\n", j, t1, t2);
-				}
+
 				if (t1 >= 0 && t1 < num_terminals && t2 >= 0 && t2 < num_terminals) {
 					int x1, y1, x2, y2;
 					scale_coordinates(terminals[t1].x, terminals[t1].y, &x1, &y1);
@@ -948,12 +1024,13 @@ static void create_rich_visualization(const char* terminals_file, const char* fs
 					fprintf(fp, "                <line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" stroke=\"#3498db\" stroke-width=\"6\" opacity=\"0.7\"/>\n",
 					        x1, y1, x2, y2);
 
-					/* Calculate and display normalized edge length */
+					/* Calculate and display edge length */
 					double dx = terminals[t2].x - terminals[t1].x;
 					double dy = terminals[t2].y - terminals[t1].y;
 					double edge_length = sqrt(dx*dx + dy*dy);
 					int mid_x = (x1 + x2) / 2;
 					int mid_y = (y1 + y2) / 2;
+
 					/* Draw white background rectangle for text */
 					fprintf(fp, "                <rect x=\"%d\" y=\"%d\" width=\"40\" height=\"14\" fill=\"white\" fill-opacity=\"0.9\" stroke=\"#bdc3c7\" stroke-width=\"1\" rx=\"2\"/>\n",
 					        mid_x - 20, mid_y - 15);
@@ -961,10 +1038,8 @@ static void create_rich_visualization(const char* terminals_file, const char* fs
 					        mid_x, mid_y - 8, edge_length);
 
 					if (verbose) {
-						printf("      Drew line from (%d,%d) to (%d,%d), length=%.3f\n", x1, y1, x2, y2, edge_length);
+						printf("    Sequential edge %d: terminal %d to %d, length=%.3f\n", j, t1, t2, edge_length);
 					}
-				} else if (verbose) {
-					printf("      Skipped - terminal out of range\n");
 				}
 			}
 		}
@@ -1669,121 +1744,155 @@ static double parse_final_mip_gap(const char* solution_file) {
 }
 
 /* Extract normalized budget from solution file */
-/* Extract Steiner points from V3 format FST file and match to parsed FSTs */
+/* Extract Steiner points and edges from V3 file using GeoSteiner library */
 static void extract_steiner_points_from_v3(const char* v3_file, FST fsts[], int num_fsts) {
 	FILE* fp = fopen(v3_file, "r");
 	if (!fp) {
-		printf("DEBUG: Could not open V3 file for Steiner extraction: %s\n", v3_file);
+		printf("ERROR: Could not open V3 file: %s\n", v3_file);
 		return;
 	}
 
-	char line[1024];
-
-	/* Check if this is actually a V3 format file */
-	if (!fgets(line, sizeof(line), fp) || strncmp(line, "V3", 2) != 0) {
+	/* Initialize GeoSteiner library */
+	if (gst_open_geosteiner() != 0) {
+		printf("ERROR: Unable to open geosteiner library\n");
 		fclose(fp);
-		return;  /* Not V3 format, skip */
+		return;
 	}
 
-	printf("DEBUG: Extracting Steiner points from V3 file...\n");
+	/* Load hypergraph from V3 file */
+	gst_hg_ptr H = gst_load_hg(fp, NULL, NULL);
+	fclose(fp);
 
-	/* Skip header until we find terminal data end marker " 1 1 1 1" */
-	while (fgets(line, sizeof(line), fp)) {
-		if (line[0] == '\t' && strstr(line, " 1 1 1 1")) {
-			break;
-		}
+	if (!H) {
+		printf("ERROR: Failed to load hypergraph from V3 file\n");
+		gst_close_geosteiner();
+		return;
 	}
 
-	/* Now parse each FST in the V3 file */
-	int v3_fst_num = 0;
-	char prev_line[1024] = {0};
-	while (fgets(line, sizeof(line), fp)) {
-		/* Look for FST start: line with just "\t3\n" preceded by "0\n" or starting section */
-		if (line[0] == '\t' && strcmp(line, "\t3\n") == 0 &&
-		    (strcmp(prev_line, "\t0\n") == 0 || strcmp(prev_line, "0\n") == 0 || prev_line[0] == '1')) {
-			/* Read terminal IDs */
-			if (!fgets(line, sizeof(line), fp)) break;
+	printf("DEBUG: Loaded hypergraph from V3 file using GeoSteiner library\n");
 
-			/* Skip if this is topology data (starts with tabs) */
-			if (line[0] == '\t' && line[1] == '\t') {
-				strcpy(prev_line, line);
-				continue;
-			}
+	/* Get hypergraph dimensions */
+	int nverts, nedges;
+	gst_get_hg_terminals(H, &nverts, NULL);
+	gst_get_hg_edges(H, &nedges, NULL, NULL, NULL);
 
-			int v3_terminals[10];
-			int v3_num_terms = 0;
-			char* token = strtok(line, " \t\n");
-			while (token && v3_num_terms < 10) {
-				v3_terminals[v3_num_terms++] = atoi(token);
-				token = strtok(NULL, " \t\n");
-			}
+	/* Allocate arrays for edge data */
+	int* edge_sizes = NEWA(nedges, int);
+	int* all_terminals = NULL;
+	gst_get_hg_edges(H, NULL, edge_sizes, NULL, NULL);
 
-			/* Read cost line */
-			if (!fgets(line, sizeof(line), fp)) break;
+	/* Calculate total space needed for all edge terminals */
+	int total_terms = 0;
+	for (int i = 0; i < nedges; i++) {
+		total_terms += edge_sizes[i];
+	}
+	all_terminals = NEWA(total_terms, int);
+	gst_get_hg_edges(H, NULL, NULL, all_terminals, NULL);
 
-			/* Read number of Steiner points */
-			if (!fgets(line, sizeof(line), fp)) break;
-			int num_steiner = atoi(line);
+	/* Process each edge (FST) from the hypergraph */
+	int* term_ptr = all_terminals;
+	int matched_count = 0;
 
-			/* Read Steiner point coordinates if present */
-			double steiner_x = 0.0, steiner_y = 0.0;
-			if (num_steiner > 0 && fgets(line, sizeof(line), fp)) {
-				sscanf(line, " %lf %lf", &steiner_x, &steiner_y);
-			}
+	for (int edge_idx = 0; edge_idx < nedges; edge_idx++) {
+		int n_terms = edge_sizes[edge_idx];
+		int* edge_terms = term_ptr;
+		term_ptr += n_terms;
 
-			/* Now match this V3 FST to our parsed FSTs by comparing terminal sets */
-			if (v3_num_terms >= 2) {
-				if (v3_fst_num < 3 || num_steiner > 0) {  /* Debug first few */
-					printf("DEBUG: V3 FST #%d has %d terminals [", v3_fst_num, v3_num_terms);
-					for (int j = 0; j < v3_num_terms; j++) printf("%d ", v3_terminals[j]);
-					printf("], steiner=%d\n", num_steiner);
-				}
+		/* Try to match this hypergraph edge with FSTs from dump */
+		for (int fst_idx = 0; fst_idx < num_fsts; fst_idx++) {
+			if (fsts[fst_idx].num_terminals != n_terms) continue;
 
-				if (num_steiner > 0) {
-					for (int i = 0; i < num_fsts; i++) {
-						if (fsts[i].num_terminals == v3_num_terms) {
-							/* Check if terminal sets match */
-							int match = 1;
-							for (int j = 0; j < v3_num_terms && match; j++) {
-								int found = 0;
-								for (int k = 0; k < fsts[i].num_terminals; k++) {
-									if (fsts[i].terminal_ids[k] == v3_terminals[j]) {
-										found = 1;
-										break;
-									}
-								}
-								if (!found) match = 0;
-							}
-
-							if (match) {
-								/* Found matching FST - assign Steiner point */
-								fsts[i].num_steiner_points = num_steiner;
-								fsts[i].steiner_points[0].x = steiner_x;
-								fsts[i].steiner_points[0].y = steiner_y;
-								printf("DEBUG: ✓ Matched V3 FST #%d to FST #%d, assigned Steiner point (%.3f, %.3f)\n",
-								       v3_fst_num, i, steiner_x, steiner_y);
-							}
-						}
+			/* Check if terminal sets match */
+			int all_match = 1;
+			for (int j = 0; j < n_terms && all_match; j++) {
+				int found = 0;
+				for (int k = 0; k < n_terms; k++) {
+					if (edge_terms[j] == fsts[fst_idx].terminal_ids[k]) {
+						found = 1;
+						break;
 					}
 				}
+				if (!found) all_match = 0;
 			}
 
-			v3_fst_num++;
-
-			/* Skip topology section */
-			while (fgets(line, sizeof(line), fp)) {
-				if (strcmp(line, "\t0\n") == 0 || strcmp(line, "0\n") == 0) {
-					strcpy(prev_line, line);
-					break;
+			if (all_match) {
+				/* Match found! Extract full_set data for Steiner points and edges */
+				struct full_set* fsp = NULL;
+				if (edge_idx >= 0 && edge_idx < H->num_edges) {
+					fsp = H->full_trees[edge_idx];
 				}
+
+				if (fsp != NULL) {
+					/* Extract Steiner point coordinates and unscale them */
+					int nsteins = fsp->steiners->n;
+					fsts[fst_idx].num_steiner_points = nsteins;
+
+					struct gst_scale_info* scale = H->scale;
+					for (int s = 0; s < nsteins && s < 10; s++) {
+						fsts[fst_idx].steiner_points[s].x = UNSCALE(fsp->steiners->a[s].x, scale);
+						fsts[fst_idx].steiner_points[s].y = UNSCALE(fsp->steiners->a[s].y, scale);
+					}
+
+					/* Extract edge topology */
+					int n_fst_edges = fsp->nedges;
+					fsts[fst_idx].num_edges = n_fst_edges;
+
+					if (matched_count < 5) {
+						printf("DEBUG: ✓ Matched hypergraph edge #%d to FST #%d: %d terminals, %d Steiner points, %d edges\n",
+						       edge_idx, fst_idx, n_terms, nsteins, n_fst_edges);
+						printf("       Terminal list: ");
+						for (int t = 0; t < n_terms; t++) {
+							printf("%d ", edge_terms[t]);
+						}
+						printf("\n       Edges from library (raw): ");
+						for (int e = 0; e < n_fst_edges && e < 5; e++) {
+							printf("[%d->%d] ", fsp->edges[e].p1, fsp->edges[e].p2);
+						}
+						printf("\n");
+					}
+
+					for (int e = 0; e < n_fst_edges && e < 20; e++) {
+						int p1 = fsp->edges[e].p1;
+						int p2 = fsp->edges[e].p2;
+
+						/* Convert vertex indices to V3 format:
+						 * Terminals (0 to n_terms-1) → 1-based positions (1 to n_terms)
+						 * Steiner points (n_terms+) → negative indices (-1, -2, ...) */
+						if (p1 < n_terms) {
+							fsts[fst_idx].edges[e].from = p1 + 1;  /* Terminal: 0-based to 1-based */
+						} else {
+							fsts[fst_idx].edges[e].from = -(p1 - n_terms + 1);  /* Steiner: to negative */
+						}
+
+						if (p2 < n_terms) {
+							fsts[fst_idx].edges[e].to = p2 + 1;  /* Terminal: 0-based to 1-based */
+						} else {
+							fsts[fst_idx].edges[e].to = -(p2 - n_terms + 1);  /* Steiner: to negative */
+						}
+					}
+
+					if (matched_count < 5) {
+						printf("       Edges converted to V3 format: ");
+						for (int e = 0; e < n_fst_edges && e < 5; e++) {
+							printf("[%d->%d] ", fsts[fst_idx].edges[e].from, fsts[fst_idx].edges[e].to);
+						}
+						printf("\n");
+					}
+				}
+
+				matched_count++;
+				break;  /* Only match once */
 			}
-			continue;  /* Continue to next FST */
 		}
-		strcpy(prev_line, line);
 	}
 
-	fclose(fp);
-	printf("DEBUG: Extracted Steiner points from %d V3 FSTs\n", v3_fst_num);
+	printf("DEBUG: Matched %d/%d FSTs from hypergraph\n", matched_count, num_fsts);
+
+	/* Cleanup */
+	free(all_terminals);
+	free(edge_sizes);
+	gst_free_hg(H);
+	gst_close_geosteiner();
 }
 
 static double parse_normalized_budget(const char* solution_file) {

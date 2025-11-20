@@ -388,6 +388,7 @@ MERGE_CKPT_OBJECTS	= merge_ckpt.o
 PLOTFST_OBJECTS		= plotfst.o
 PRUNEFST_OBJECTS	= prunefstmain.o
 RFST_OBJECTS		= rfstmain.o
+SIMULATE_OBJECTS	= simulate.o
 SMT_OBJECTS		= smtmain.o
 UFST_OBJECTS		= ufstmain.o
 
@@ -427,6 +428,9 @@ dumpfst : $(DUMPFST_OBJECTS) $(MEMORY) libgeosteiner.la
 
 efst : $(EFST_OBJECTS) $(MEMORY) libgeosteiner.la
 	$(CC) $(CFLAGS) -o efst $(EFST_OBJECTS) $(GEOLIB)
+
+simulate : $(SIMULATE_OBJECTS) $(MEMORY) libgeosteiner.la
+	$(CC) $(CFLAGS) -o simulate $(SIMULATE_OBJECTS) $(GEOLIB)
 
 fst2graph : $(FST2GRAPH_OBJECTS) $(MEMORY) libgeosteiner.la
 	$(CC) $(CFLAGS) -o fst2graph $(FST2GRAPH_OBJECTS) $(GEOLIB)
