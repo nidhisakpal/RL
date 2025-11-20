@@ -2685,6 +2685,26 @@ gst_channel_ptr		param_print_solve_trace;
 				nodep -> z = bbip -> best_z;
 				return (LB_CUTOFF);
 			}
+			/* Check for cycles in integer solution */
+			struct constraint* cycle_constraint = _gst_check_integer_solution_for_cycles(x, bbip);
+			if (cycle_constraint NE NULL) {
+				/* Cycle detected! Add SEC constraint and re-solve */
+				fprintf(stderr, "Integer solution has cycle - adding SEC constraint and re-solving\n");
+
+				/* Add the violated SEC to the constraint pool */
+				int num_added = _gst_add_constraints(bbip, cycle_constraint);
+
+				/* Free the constraint (it's been copied to the pool) */
+				free(cycle_constraint -> mask);
+				free(cycle_constraint);
+
+				if (num_added > 0) {
+					/* Continue to next iteration - will re-solve with new constraint */
+					++iteration;
+					continue;
+				}
+			}
+
 			bbip -> node -> optimal = TRUE;
 			return (LB_INTEGRAL);
 		}

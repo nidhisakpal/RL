@@ -263,5 +263,7 @@ extern bool		_gst_check_for_better_IFS (double *		x,
 extern struct bbinfo *	_gst_create_bbinfo (struct gst_solver *	solver);
 extern int		_gst_get_lb_status (struct bbnode * node);
 extern void		_gst_new_upper_bound (double ub, struct bbinfo * bbip);
+extern struct constraint * _gst_check_integer_solution_for_cycles (double * x,
+								     struct bbinfo * bbip);
 
 #endif

@@ -231,6 +231,7 @@ LIB_SRC = \
 	cra.c \
 	cutset.c \
 	cutsubs.c \
+	cycle_check.c \
 	ddsuf.c \
 	dsuf.c \
 	dt.c \
