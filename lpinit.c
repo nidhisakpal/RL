@@ -155,8 +155,15 @@ char		msg [512];
 
 	CPXsetintparam (cplex_env, CPX_PARAM_SCRIND, 0);
 
-	/* Set MIP gap tolerance to 0.05% (0.0006) - extremely tight */
-	CPXsetdblparam (cplex_env, CPX_PARAM_EPGAP, 0.0005);
+	/* MIP gap tolerance is set below in section 6 */
+
+	/* ===== CPLEX TUNING FOR MIP GAP TOLERANCE ===== */
+
+	/* Set MIP gap tolerance for integer programming quality */
+	/* PSW: Only set MIP gap - other parameters (presolve, barrier, scaling) were degrading solution quality */
+	/* Results11 (Nov 17) worked correctly with ONLY this parameter, so we match that configuration */
+	CPXsetdblparam (cplex_env, CPX_PARAM_EPGAP, 0.05);  /* 5% relative gap (reasonable trade-off) */
+	fprintf(stderr, "DEBUG CPLEX: Set MIP gap tolerance (epgap) to 0.05 (5%%)\n");
 
 	/* Skip log file operations for newer CPLEX versions */
 

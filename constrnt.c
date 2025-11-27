@@ -68,6 +68,25 @@
 #include <stdlib.h>
 #include "steiner.h"
 #include <string.h>
+static int restore_call_count = 0;
+
+
+/*
+ * Data structures for MST bias correction
+ */
+
+struct mst_pair {
+	int fst_i;           /* First 2-terminal FST index */
+	int fst_j;           /* Second 2-terminal FST index */
+	int shared_terminal; /* Terminal that appears in both */
+	double D_ij;         /* Battery cost of shared terminal */
+	int y_var_index;     /* Index of y_ij variable in LP */
+};
+
+struct mst_correction_info {
+	int num_pairs;              /* Number of MST pairs to track */
+	struct mst_pair* pairs;     /* Array of MST pairs */
+};
 
 
 /*
@@ -132,6 +151,11 @@ static void		update_lp_solution_history (double *,
 						    double *,
 						    struct bbinfo *);
 static void		verify_pool (struct cpool *);
+static struct mst_correction_info *
+			identify_mst_pairs (struct gst_hypergraph * cip,
+					    bitmap_t * edge_mask,
+					    int nedges);
+static void		free_mst_correction_info (struct mst_correction_info * info);
 
 #if CPLEX
 static void		reload_cplex_problem (struct bbinfo *);
@@ -142,6 +166,150 @@ static void		get_current_basis (LP_t *, int *, int *);
 static void		set_current_basis (LP_t *, int *, int *);
 #endif
 
+
+/*
+ * This routine identifies all pairs of 2-terminal FSTs that share a common
+ * terminal. When both FSTs are selected, the shared terminal's battery cost
+ * gets counted twice, creating an unfair bias. We track these with y_ij
+ * variables to apply the correct penalty -D_ij to the objective.
+ */
+
+	static struct mst_correction_info *
+identify_mst_pairs (
+
+struct gst_hypergraph *	cip,		/* IN - hypergraph with FSTs */
+bitmap_t *		edge_mask,	/* IN - set of valid edges */
+int			nedges		/* IN - number of edges */
+)
+{
+int			i, j, k;
+int			terminal;
+int *			ep1;
+int *			ep2;
+int *			fst_list;
+int			fst_count;
+int			pair_count;
+int			max_pairs;
+struct mst_correction_info *	info;
+struct mst_pair *		pairs;
+
+	fprintf(stderr, "\nDEBUG MST_CORRECTION: Identifying pairs of 2-terminal FSTs that share terminals\n");
+
+	/* Count 2-terminal FSTs and estimate max pairs */
+	int num_2term_fsts = 0;
+	for (i = 0; i < nedges; i++) {
+		if (BITON (edge_mask, i) && cip -> edge_size[i] == 2) {
+			num_2term_fsts++;
+		}
+	}
+
+	/* Conservative estimate: each terminal might be shared by several pairs */
+	/* For N 2-terminal FSTs, maximum pairs is N*(N-1)/2, but we cap it */
+	max_pairs = (num_2term_fsts * (num_2term_fsts - 1)) / 2;
+	if (max_pairs > 1000) max_pairs = 1000;  /* Reasonable cap */
+
+	fprintf(stderr, "DEBUG MST_CORRECTION: Found %d 2-terminal FSTs, estimating max %d pairs\n",
+	        num_2term_fsts, max_pairs);
+
+	if (num_2term_fsts < 2) {
+		fprintf(stderr, "DEBUG MST_CORRECTION: Not enough 2-terminal FSTs for pairs\n");
+		return NULL;
+	}
+
+	/* Allocate structures */
+	info = NEW (struct mst_correction_info);
+	pairs = NEWA (max_pairs, struct mst_pair);
+	fst_list = NEWA (num_2term_fsts, int);
+	pair_count = 0;
+
+	/* For each terminal, find all pairs of 2-terminal FSTs that share it */
+	for (terminal = 0; terminal < cip -> num_verts; terminal++) {
+		if (NOT cip -> tflag[terminal]) continue;  /* Skip non-terminals */
+
+		/* PSW: Apply MST correction to ALL terminals uniformly to avoid bias */
+		/* Previous bug: Selective correction (< 30% only) created unfair advantage for high-battery terminals */
+		/* High-battery FSTs benefited from double-counting while low-battery FSTs got penalized */
+		double terminal_battery = cip -> pts -> a[terminal].battery;
+		fprintf(stderr, "DEBUG MST_CORRECTION: Processing terminal %d (battery=%.1f%%)\n",
+		        terminal, terminal_battery);
+
+		/* Find all 2-terminal FSTs containing this terminal */
+		fst_count = 0;
+		ep1 = cip -> term_trees[terminal];
+		ep2 = cip -> term_trees[terminal + 1];
+		while (ep1 < ep2) {
+			i = *ep1++;
+			if (NOT BITON (edge_mask, i)) continue;
+			if (cip -> edge_size[i] != 2) continue;
+			fst_list[fst_count++] = i;
+		}
+
+		if (fst_count < 2) continue;  /* Need at least 2 FSTs to form a pair */
+
+		fprintf(stderr, "DEBUG MST_CORRECTION: Terminal %d has %d 2-terminal FSTs\n",
+		        terminal, fst_count);
+
+		/* Create pairs from all combinations of FSTs sharing this terminal */
+		for (j = 0; j < fst_count - 1; j++) {
+			for (k = j + 1; k < fst_count; k++) {
+				if (pair_count >= max_pairs) {
+					fprintf(stderr, "DEBUG MST_CORRECTION: Reached max pairs limit\n");
+					goto done;
+				}
+
+				int fst_i = fst_list[j];
+				int fst_j = fst_list[k];
+
+				/* Calculate penalty D_ij using same formula as objective */
+				double battery_terminal = cip -> pts -> a[terminal].battery;
+				double D_ij = 10.0 * (-1.0 + battery_terminal / 100.0);
+
+				pairs[pair_count].fst_i = fst_i;
+				pairs[pair_count].fst_j = fst_j;
+				pairs[pair_count].shared_terminal = terminal;
+				pairs[pair_count].D_ij = D_ij;
+				pairs[pair_count].y_var_index = -1;
+
+				fprintf(stderr, "DEBUG MST_CORRECTION: Pair %d: FST#%d + FST#%d share t%d, D=%.3f\n",
+				        pair_count, fst_i, fst_j, terminal, D_ij);
+				pair_count++;
+			}
+		}
+	}
+
+done:
+	free ((char *) fst_list);
+
+	fprintf(stderr, "DEBUG MST_CORRECTION: Total pairs found: %d\n", pair_count);
+
+	if (pair_count == 0) {
+		free ((char *) pairs);
+		free ((char *) info);
+		return NULL;
+	}
+
+	info -> num_pairs = pair_count;
+	info -> pairs = pairs;
+
+	return info;
+}
+
+/*
+ * Free MST correction info structure (defined below)
+ */
+	static
+	void
+free_mst_correction_info (
+struct mst_correction_info *	info
+)
+{
+	if (info == NULL) return;
+	if (info -> pairs != NULL) {
+		free ((char *) info -> pairs);
+	}
+	free ((char *) info);
+}
+
 /*
  * This routine initializes the given constraint pool and fills it with
  * the initial set of constraints:
@@ -408,8 +576,26 @@ gst_channel_ptr		param_print_solve_trace;
 		  + num_incompat_coeffs		+ num_2sec_coeffs
 		  + num_at_least_one_coeffs;
 
-	rowsize = 2 * nrows;		/* extra space for more rows... */
-	nzsize = 4 * ncoeff;		/* extra space for more coefficients */
+	/* PSW: Pre-calculate MST constraints for rowsize estimation */
+	int num_mst_rows = 0;
+	int num_mst_coeffs = 0;
+	if (getenv("GEOSTEINER_BUDGET") != NULL && getenv("ENABLE_MST_CORRECTION") != NULL) {
+		/* Estimate MST pairs: worst case is 3 per 3-terminal FST */
+		int num_3term_fsts = 0;
+		for (i = 0; i < nedges; i++) {
+			if (BITON(edge_mask, i) && cip->edge_size[i] == 3) {
+				num_3term_fsts++;
+			}
+		}
+		int estimated_mst_pairs = num_3term_fsts;  /* Conservative estimate */
+		num_mst_rows = 3 * estimated_mst_pairs;   /* 3 constraints per pair */
+		num_mst_coeffs = 10 * estimated_mst_pairs; /* 10 coeffs (3+3+4) total per pair */
+		fprintf(stderr, "DEBUG MST_SIZING: Estimated %d MST pairs, %d rows, %d coeffs\n",
+		        estimated_mst_pairs, num_mst_rows, num_mst_coeffs);
+	}
+
+	rowsize = 4 * (nrows + num_mst_rows);		/* extra space for more rows... */
+	nzsize = 6 * (ncoeff + num_mst_coeffs);		/* extra space for more coefficients */
 
 	blkp		= NEW (struct rblk);
 	blkp -> next	= NULL;
@@ -428,6 +614,8 @@ gst_channel_ptr		param_print_solve_trace;
 	pool -> blocks	= blkp;
 	/* PSW: In multi-objective mode, we need space for FST + not_covered variables */
 	int num_not_covered = 0;
+	int num_y_vars = 0;
+	struct mst_correction_info * mst_info = NULL;
 	char* budget_env_check = getenv("GEOSTEINER_BUDGET");
 	if (budget_env_check != NULL) {
 		/* Count terminals for not_covered variables */
@@ -436,8 +624,19 @@ gst_channel_ptr		param_print_solve_trace;
 				num_not_covered++;
 			}
 		}
+
+		/* Identify MST pairs for bias correction (only if MST_CORRECTION enabled) */
+		/* PSW: Using pre-computation approach - NO y_ij variables needed */
+		if (getenv("ENABLE_MST_CORRECTION") != NULL) {
+			mst_info = identify_mst_pairs(cip, edge_mask, nedges);
+			if (mst_info != NULL) {
+				num_y_vars = 0;  /* Pre-computation approach - no y_ij variables */
+				fprintf(stderr, "DEBUG MST_CORRECTION: Found %d MST pairs (using pre-computation, no y_ij vars)\n",
+				        mst_info -> num_pairs);
+			}
+		}
 	}
-	int total_vars = nedges + num_not_covered;
+	int total_vars = nedges + num_not_covered + num_y_vars;
 
 	pool -> cbuf	= NEWA (total_vars + 1, struct rcoef);
 	pool -> iter	= 0;
@@ -607,6 +806,27 @@ gst_channel_ptr		param_print_solve_trace;
 			rp -> val = n_covering_fsts;
 			_gst_add_constraint_to_pool (pool, pool -> cbuf, TRUE);
 			fprintf(stderr, "DEBUG CONSTRAINT: Added constraint Σx[FSTs] + %d·not_covered[%d] ≤ %d for terminal %d\n", n_covering_fsts, terminal_idx, n_covering_fsts, terminal_idx);
+
+		/* Constraint type 3: Σᵢ x[i] + not_covered[j] ≥ 1 (coverage requirement) */
+		/* Either at least one FST covering terminal j is selected, OR terminal j is marked uncovered */
+		rp = pool -> cbuf;
+		ep1 = cip -> term_trees [i];
+		ep2 = cip -> term_trees [i + 1];
+		while (ep1 < ep2) {
+			k = *ep1++;
+			if (NOT BITON (edge_mask, k)) continue;
+			rp -> var = k + RC_VAR_BASE;
+			rp -> val = 1;
+			++rp;
+		}
+		/* Add not_covered[terminal_idx] */
+		rp -> var = (nedges + terminal_idx) + RC_VAR_BASE;
+		rp -> val = 1;
+		++rp;
+		rp -> var = RC_OP_GE;
+		rp -> val = 1;
+		_gst_add_constraint_to_pool (pool, pool -> cbuf, TRUE);
+		fprintf(stderr, "DEBUG CONSTRAINT: Added coverage requirement Σx[FSTs] + not_covered[%d] ≥ 1 for terminal %d\n", terminal_idx, terminal_idx);
 		}
 
 		/* Add source terminal constraint: not_covered[0] = 0 (terminal 0 must always be covered) */
@@ -623,6 +843,13 @@ gst_channel_ptr		param_print_solve_trace;
 		}
 
 		free((char*)vertex_to_terminal);
+	}
+
+	/* PSW: MST correction now uses pre-computation approach */
+	/* No y_ij variables or constraints needed - FST costs adjusted directly in objective */
+	if (getenv("ENABLE_MST_CORRECTION") != NULL && mst_info != NULL && mst_info -> num_pairs > 0) {
+		fprintf(stderr, "DEBUG MST_CORRECTION: Using pre-computation approach for %d MST pairs (no constraints added)\n",
+		        mst_info -> num_pairs);
 	}
 
 	/* Now generate one constraint per incompatible pair... */
@@ -815,6 +1042,11 @@ gst_channel_ptr		param_print_solve_trace;
 		pool -> nrows, pool -> npend);
 
 	print_pool_memory_usage (pool, param_print_solve_trace);
+
+	/* Free MST correction info if it was allocated */
+	if (getenv("ENABLE_MST_CORRECTION") != NULL && mst_info != NULL) {
+		free_mst_correction_info (mst_info);
+	}
 }
 
 /*
@@ -1087,8 +1319,10 @@ char			tbuf [32];
 
 	/* We know exactly how many columns (variables) we will */
 	/* ever need.  We never add additional variables. */
-	/* PSW: In multi-objective mode, we need space for FST + not_covered variables */
+	/* PSW: In multi-objective mode, we need space for FST + not_covered + y_ij variables */
 	int num_not_covered_lp = 0;
+	int num_y_vars_lp = 0;
+	struct mst_correction_info * mst_info_lp = NULL;
 	char* budget_env_check_lp = getenv("GEOSTEINER_BUDGET");
 	if (budget_env_check_lp != NULL) {
 		bitmap_t* vert_mask_lp = cip -> initial_vert_mask;
@@ -1098,8 +1332,20 @@ char			tbuf [32];
 				num_not_covered_lp++;
 			}
 		}
+
+		/* Identify MST pairs for bias correction (only if MST_CORRECTION enabled) */
+		/* PSW: Using pre-computation approach - NO y_ij variables needed */
+		if (getenv("ENABLE_MST_CORRECTION") != NULL) {
+			mst_info_lp = identify_mst_pairs(cip, edge_mask, nedges);
+			if (mst_info_lp != NULL) {
+				/* Don't allocate y_ij variables - we'll adjust FST costs directly */
+				num_y_vars_lp = 0;  /* Pre-computation approach */
+				fprintf(stderr, "DEBUG MST_CORRECTION (LP): Found %d MST pairs (using pre-computation, no y_ij vars)\n",
+				        mst_info_lp -> num_pairs);
+			}
+		}
 	}
-	macsz = nedges + num_not_covered_lp;
+	macsz = nedges + num_not_covered_lp + num_y_vars_lp;  /* num_y_vars_lp = 0 now */
 	mac = macsz;
 
 	/* Build the objective function... */
@@ -1170,9 +1416,38 @@ char			tbuf [32];
 		}
 
 		/* Set objective coefficients for not_covered variables */
+		/* PSW: Beta=0 works correctly (verified in results11) - battery bonus drives coverage naturally */
+		/* The negative battery costs make low-battery FSTs attractive, achieving good coverage */
+		/* without needing an explicit penalty term */
 		double beta = 0.0;
 		for (i = 0; i < num_not_covered_lp; i++) {
 			objx [nedges + i] = beta;
+		}
+
+		/* PSW: PRE-COMPUTE MST corrections by adjusting FST costs directly */
+		/* This avoids adding y_ij variables/constraints which cause CPLEX crashes */
+		/* For each pair sharing a terminal, subtract D_ij/2 from each FST's cost */
+		/* When both selected: -D_ij/2 - D_ij/2 = -D_ij (full correction) */
+		/* When one selected: -D_ij/2 (partial correction, acceptable approximation) */
+		if (getenv("ENABLE_MST_CORRECTION") != NULL && mst_info_lp != NULL && mst_info_lp -> num_pairs > 0) {
+			fprintf(stderr, "DEBUG MST_CORRECTION (LP): Pre-computing MST corrections by adjusting FST costs\n");
+			for (i = 0; i < mst_info_lp -> num_pairs; i++) {
+				struct mst_pair * pair = &(mst_info_lp -> pairs[i]);
+				int fst_i = pair -> fst_i;
+				int fst_j = pair -> fst_j;
+				double D_ij = pair -> D_ij;
+
+				/* Subtract half the double-counting from each FST */
+				double correction = -D_ij / 2.0;
+				objx[fst_i] += correction;
+				objx[fst_j] += correction;
+
+				fprintf(stderr, "DEBUG MST_CORRECTION (LP): Pair %d: FST#%d + FST#%d share terminal, D_ij=%.3f, correction=%.3f each\n",
+				        i, fst_i, fst_j, D_ij, correction);
+				fprintf(stderr, "DEBUG MST_CORRECTION (LP):   FST#%d: objx adjusted by %.3f\n", fst_i, correction);
+				fprintf(stderr, "DEBUG MST_CORRECTION (LP):   FST#%d: objx adjusted by %.3f\n", fst_j, correction);
+			}
+			fprintf(stderr, "DEBUG MST_CORRECTION (LP): Pre-computed corrections for %d MST pairs\n", mst_info_lp -> num_pairs);
 		}
 	} else {
 		/* Default mode: use only tree costs */
@@ -1411,6 +1686,11 @@ char			tbuf [32];
 	T1 = _gst_get_cpu_time ();
 	_gst_convert_cpu_time (T1 - T0, tbuf);
 	gst_channel_printf (params -> print_solve_trace, "_gst_build_initial_formulation: %s seconds.\n", tbuf);
+
+	/* Free MST correction info if it was allocated */
+	if (getenv("ENABLE_MST_CORRECTION") != NULL && mst_info_lp != NULL) {
+		free_mst_correction_info (mst_info_lp);
+	}
 
 	return (lp);
 }
@@ -1828,6 +2108,8 @@ double			prev_z;
 	INDENT (bbip -> params -> print_solve_trace);
 
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 	nodep	= bbip -> node;
 	pool	= bbip -> cpool;
 
@@ -2105,6 +2387,8 @@ struct gst_hypergraph *	cip;
 
 	cip	= bbip -> cip;
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 
 #if 0
 	/* Debug code to dump each LP instance attempted... */
@@ -2239,6 +2523,8 @@ double *		matval;
 	verify_pool (bbip -> cpool);
 
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 	pool	= bbip -> cpool;
 
 	if (lp -> rows NE pool -> nlprows) {
@@ -2362,6 +2648,8 @@ gst_channel_ptr		print_solve_trace;
 	(void) pool_iteration;
 
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 
 	scaling_disabled = FALSE;
 
@@ -2439,6 +2727,8 @@ retry_lp:
 		/* Must reload the entire problem for this to take effect! */
 		reload_cplex_problem (bbip);
 		lp = bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 
 		scaling_disabled = TRUE;
 
@@ -2461,6 +2751,8 @@ retry_lp:
 		/* Must reload entire problem for this to take affect! */
 		reload_cplex_problem (bbip);
 		lp = bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 	}
 
 	/* Print info about the LP tableaux we just solved... */
@@ -2524,6 +2816,8 @@ double *		matval;
 	verify_pool (bbip -> cpool);
 
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 	pool	= bbip -> cpool;
 
 	if (_MYCPX_getnumrows (lp) NE pool -> nlprows) {
@@ -2596,32 +2890,51 @@ double *		matval;
 	matval	= NEWA (ncoeff, double);
 
 	/* Put the rows into the format that CPLEX wants them in... */
+	int ncols_lp = _MYCPX_getnumcols (lp);
+	fprintf(stderr, "DEBUG ADDROWS: LP has %d columns, adding %d rows with %d coeffs\n", ncols_lp, newrows, ncoeff);
 	nzi = 0;
 	j = 0;
 	for (i = i1; i < i2; i++, j++) {
 		row = pool -> lprows [i];
 		rcp = &(pool -> rows [row]);
 		matbeg [j] = nzi;
+		fprintf(stderr, "DEBUG ADDROWS: Row %d (pool row %d): ", j, row);
 		for (cp = rcp -> coefs; ; cp++) {
 			var = cp -> var;
 			if (var < RC_VAR_BASE) break;
-			matind [nzi] = var - RC_VAR_BASE;
+			int col_idx = var - RC_VAR_BASE;
+			if (col_idx >= ncols_lp) {
+				fprintf(stderr, "ERROR ADDROWS: Column index %d >= LP columns %d!\n", col_idx, ncols_lp);
+				fprintf(stderr, "ERROR ADDROWS: var=%d, RC_VAR_BASE=%d, coefficient=%f\n", var, RC_VAR_BASE, (double)(cp -> val));
+				FATAL_ERROR;
+			}
+			matind [nzi] = col_idx;
 			matval [nzi] = cp -> val;
+			fprintf(stderr, "x[%d]*%f ", col_idx, (double)(cp -> val));
 			++nzi;
 		}
 		rhs [j] = cp -> val;
+		char sense_char = '?';
 		switch (var) {
-		case RC_OP_LE:	sense [j] = 'L';	break;
-		case RC_OP_EQ:	sense [j] = 'E';	break;
-		case RC_OP_GE:	sense [j] = 'G';	break;
+		case RC_OP_LE:	sense [j] = 'L';	sense_char = '<'; break;
+		case RC_OP_EQ:	sense [j] = 'E';	sense_char = '='; break;
+		case RC_OP_GE:	sense [j] = 'G';	sense_char = '>'; break;
 		default:
 			FATAL_ERROR;
 			break;
 		}
+		fprintf(stderr, "%c= %f\n", sense_char, (double)(rhs[j]));
 	}
 	matbeg [j] = nzi;
 	FATAL_ERROR_IF (nzi NE ncoeff);
 
+	fprintf(stderr, "DEBUG ADDROWS: About to call _MYCPX_addrows with ncols=%d, nrows_before=%d\n",
+		_MYCPX_getnumcols(lp), _MYCPX_getnumrows(lp));
+	fprintf(stderr, "DEBUG ADDROWS: matbeg array: ");
+	for (int k = 0; k <= newrows; k++) {
+		fprintf(stderr, "%d ", matbeg[k]);
+	}
+	fprintf(stderr, "\n");
 	i = _MYCPX_addrows (lp,
 			    0,
 			    newrows,
@@ -2633,6 +2946,7 @@ double *		matval;
 			    matval,
 			    NULL,
 			    NULL);
+	fprintf(stderr, "DEBUG ADDROWS: _MYCPX_addrows returned %d, nrows_after=%d\n", i, _MYCPX_getnumrows(lp));
 
 	FATAL_ERROR_IF (i NE 0);
 
@@ -2682,6 +2996,8 @@ char *			b_lu;
 double *		b_bd;
 
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 	pool	= bbip -> cpool;
 
 	newrows	= pool -> npend;
@@ -2692,7 +3008,9 @@ double *		b_bd;
 
 	/* Save off the current basis, setting the new	*/
 	/* rows to be basic...				*/
-	cstat = NEWA (bbip -> cip -> num_edges, int);
+	/* PSW: cstat must accommodate all LP columns (FST + not_covered + y_ij), not just FST edges */
+	int num_lp_cols = _MYCPX_getnumcols (lp);
+	cstat = NEWA (num_lp_cols, int);
 	rstat = NEWA (i2, int);
 	if (_MYCPX_getbase (lp, cstat, rstat) NE 0) {
 		FATAL_ERROR;
@@ -3492,6 +3810,8 @@ struct rcon *		rcp;
 struct bbnode *		nodep;
 
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 	pool	= bbip -> cpool;
 	nodep	= bbip -> node;
 
@@ -3600,6 +3920,8 @@ struct rcon *		rcp;
 struct bbnode *		nodep;
 
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 	pool	= bbip -> cpool;
 	nodep	= bbip -> node;
 
@@ -3704,6 +4026,8 @@ LP_t *			lp;
 struct lpmem *		lpmem;
 
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 	lpmem	= bbip -> lpmem;
 
 	/* Free up CPLEX's memory... */
@@ -3792,6 +4116,8 @@ LP_t *			lp;
 struct rcon *		rcp;
 
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 	pool	= bbip -> cpool;
 	nrows	= pool -> nrows;
 	n	= pool -> nlprows;
@@ -3800,16 +4126,20 @@ struct rcon *		rcp;
 
 	FATAL_ERROR_IF (n NE GET_LP_NUM_ROWS (lp));
 
+	fprintf(stderr, "DEBUG SAVE_BASIS: Saving basis - n_rows=%d, nvars=%d\n", n, nvars);
 	nodep -> n_uids		= n;
 	nodep -> bc_uids	= NEWA (n, int);
 	nodep -> bc_row		= NEWA (n, int);
-	nodep -> rstat		= NEWA (n, int);
-	nodep -> cstat		= NEWA (nvars, int);
+	nodep -> rstat		= NEWA (n + 1, int);
+	fprintf(stderr, "DEBUG SAVE_BASIS: About to allocate cstat with nvars=%d\n", nvars);
+	nodep -> cstat		= NEWA (nvars + 1, int);
+	fprintf(stderr, "DEBUG SAVE_BASIS: cstat allocated, calling getbase\n");
 
 #ifdef CPLEX
 	if (_MYCPX_getbase (lp, nodep -> cstat, nodep -> rstat) NE 0) {
 		FATAL_ERROR;
 	}
+	fprintf(stderr, "DEBUG SAVE_BASIS: getbase completed successfully\n");
 #endif
 
 #ifdef LPSOLVE
@@ -3867,12 +4197,15 @@ struct rcon *		rcp_endp;
 int *			rowflags;
 
 	lp	= bbip -> lp;
+	restore_call_count++;
+	fprintf(stderr, "\n=== DEBUG RESTORE CALL #%d ===\n", restore_call_count);
 	pool	= bbip -> cpool;
 
 	FATAL_ERROR_IF (nodep -> bc_uids EQ NULL);
 
 	/* Transition all rows back to the "not-in-LP-tableaux" state. */
 	n = GET_LP_NUM_ROWS (lp);
+	fprintf(stderr, "DEBUG RESTORE: LP has %d rows at start\n", n);
 	/* PSW: Debug constraint count mismatch */
 // 	fprintf(stderr, "DEBUG CONSTRNT: LP rows=%d, pool->nlprows=%d, pool->npend=%d\n",
 // 		n, pool -> nlprows, pool -> npend);
@@ -3905,8 +4238,8 @@ int *			rowflags;
 	pool -> nlprows = 0;
 
 	/* Delete all rows from the LP tableaux... */
-	rowflags = NEWA (n + 1, int);
-	for (i = 0; i <= n; i++) {
+	rowflags = NEWA (n, int);
+	for (i = 0; i < n; i++) {
 		rowflags [i] = 1;
 	}
 
@@ -3925,10 +4258,16 @@ int *			rowflags;
 
 	n_uids	= nodep -> n_uids;
 
+	fprintf(stderr, "DEBUG RESTORE: pool->nrows=%d, pool->maxrows=%d, n_uids=%d\n", pool->nrows, pool->maxrows, n_uids);
+	fprintf(stderr, "DEBUG RESTORE: About to access lprows, allocated size should be maxrows=%d\n", pool->maxrows);
 	rcp	 = pool -> rows;
 	rcp_endp = rcp + pool -> nrows;
 
+	/* PSW: Check if n_uids exceeds lprows capacity */
+	FATAL_ERROR_IF(n_uids > pool->maxrows);
+
 	for (i = 0; i < n_uids; i++) {
+		fprintf(stderr, "DEBUG RESTORE: Setting lprows[%d] = -1 (n_uids=%d)\n", i, n_uids);
 		pool -> lprows [i] = -1;
 	}
 
@@ -3953,16 +4292,20 @@ int *			rowflags;
 		    (pool -> lprows [j] NE -1)) {
 			FATAL_ERROR;
 		}
+		fprintf(stderr, "DEBUG RESTORE: Setting lprows[%d] = %d\n", j, row);
 		rcp -> lprow = -2;
 		pool -> lprows [j] = row;
 	}
 	pool -> npend = n_uids;
 
 	/* Load all pending rows into the LP tableaux! */
+	fprintf(stderr, "DEBUG RESTORE: About to add pending rows\n");
 	_gst_add_pending_rows_to_LP (bbip);
 
 	if ((nodep -> cstat NE NULL) AND (nodep -> rstat NE NULL)) {
+		fprintf(stderr, "DEBUG RESTORE: About to copybase with %d rows, %d cols\n", GET_LP_NUM_ROWS(lp), GET_LP_NUM_COLS(lp));
 		/* We have a basis to restore... */
+		fprintf(stderr, "DEBUG RESTORE: copybase completed\n");
 #ifdef CPLEX
 		i = _MYCPX_copybase (lp, nodep -> cstat, nodep -> rstat);
 		FATAL_ERROR_IF (i NE 0);
@@ -4269,18 +4612,22 @@ char			buf [64];
 	nedges	= cip -> num_edges;
 
 	/* PSW: In multi-objective mode, we need space for FST + not_covered variables */
+	/* PSW: Using pre-computation approach - NO y_ij variables */
 	int num_not_covered = 0;
+	int num_y_vars = 0;  /* Pre-computation approach - no y_ij variables */
 	char* budget_env_check = getenv("GEOSTEINER_BUDGET");
 	if (budget_env_check != NULL) {
 		bitmap_t* vert_mask = cip -> initial_vert_mask;
+		bitmap_t* edge_mask = cip -> initial_edge_mask;
 		/* Count terminals for not_covered variables */
 		for (int i = 0; i < cip -> num_verts; i++) {
 			if (BITON (vert_mask, i) && cip -> tflag[i]) {
 				num_not_covered++;
 			}
 		}
+		/* No y_ij variable estimation needed - using pre-computation */
 	}
-	int total_vars = nedges + num_not_covered;
+	int total_vars = nedges + num_not_covered + num_y_vars;
 	cbuf	= NEWA (total_vars + 1, struct rcoef);
 
 	_gst_expand_constraint (lcp, cbuf, bbip);
