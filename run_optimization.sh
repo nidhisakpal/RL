@@ -7,14 +7,14 @@ set -e  # Exit on any error
 
 # Configuration
 NUM_TERMINALS=${1:-20}           # Number of terminals (default: 20)
-BUDGET=${2:-1.6 }                   # Budget constraint in NORMALIZED units (default: 5)
+BUDGET=${2:-1.6 }                   # Budget constraint in NORMALIZED units (default: 1.6)
                                   # NOTE: Budget is normalized (tree costs divided by max)
                                   # Each FST contributes 0-1 normalized tree cost
-                                  # With beta=0.5, budget creates trade-off between coverage and cost
-                                  # Typical range: 3 (very tight) to 10 (loose) for 20 terminals
+                                  # With beta=0, budget controls coverage (alpha=10.0)
+                                  # Typical range: 0.5 (very tight) to 3.0 (loose) for 20 terminals
 CHARGE_RATE=${3:-10.0}           # Charge rate for connected terminals (default: 10.0%)
 DEMAND_RATE=${4:-5.0}            # Demand rate for all terminals (default: 5.0%)
-NUM_ITERATIONS=${5:-10}          # Number of iterations (default: 15)
+NUM_ITERATIONS=${5:-10}          # Number of iterations (default: 10)
 OUTPUT_DIR=${6:-"results"}       # Output directory (default: results)
 REUSE_TERMINALS=${7:-"no"}       # Reuse existing terminals? "yes" or "no" (default: no)
 
@@ -57,7 +57,7 @@ if [ "$REUSE_TERMINALS" = "yes" ] && [ -f "$OUTPUT_DIR/terminals_iter1.txt" ]; t
     echo "   (To generate new terminals, delete the file or set REUSE_TERMINALS=no)"
 else
     echo "🎲 Generating $NUM_TERMINALS random terminals..."
-    ./rand_points -r $NUM_TERMINALS > "$OUTPUT_DIR/terminals_iter1.txt"
+    ./rand_points  $NUM_TERMINALS > "$OUTPUT_DIR/terminals_iter1.txt"
     echo "✅ Generated new random terminals: $OUTPUT_DIR/terminals_iter1.txt"
 fi
 
@@ -102,7 +102,7 @@ run_iteration() {
     # Filter out verbose BB trace lines to reduce file size from 200MB to ~5MB
     # Keep: PostScript (% fs), statistics (% @0-@6), DEBUG output, LP_VARS, and SOLUTION COST BREAKDOWN
     # Remove: Branch-and-bound trace (% @LO, % Node, etc.), congested component debug
-    GEOSTEINER_BUDGET=$BUDGET ./bb < "$OUTPUT_DIR/fsts_iter${iter}.txt" 2>&1 | \
+    ENABLE_MST_CORRECTION=1 GEOSTEINER_BUDGET=$BUDGET ./bb < "$OUTPUT_DIR/fsts_iter${iter}.txt" 2>&1 | \
         grep -Ev "^ % @(LO|LN|PL|PAP|NC|PMEM)|^% @(LO|LN)|^% Node |^% Resuming|^%  |^  % [^S]|^ %   Final|^ %     [0-9]|^ % suspending|^ % @cutset|^ %       [0-9]|^ % [0-9]+ fractional|^ % initially [0-9]+ congested|^ % _gst_find_congested|^ % \tcomponent [0-9]+" > "$OUTPUT_DIR/solution_iter${iter}.txt"
 
     # Check if solver found the problem infeasible
@@ -314,22 +314,23 @@ echo "🔄 To run again:"
 echo "   ./run_optimization.sh [terminals] [budget] [charge_rate] [demand_rate] [iterations] [output_dir] [reuse_terminals]"
 echo ""
 echo "Examples:"
-echo "   # Default (20 terminals, budget=1.5, new random terminals)"
+echo "   # Default (20 terminals, budget=1.6, new random terminals)"
 echo "   ./run_optimization.sh"
 echo ""
 echo "   # Tight budget"
 echo "   ./run_optimization.sh 20 0.5 10.0 5.0 10 tight no"
 echo ""
 echo "   # Moderate budget with NEW random terminals each run"
-echo "   ./run_optimization.sh 20 1.5 10.0 5.0 10 moderate no"
+echo "   ./run_optimization.sh 20 1.6 10.0 5.0 10 moderate no"
 echo ""
 echo "   # REUSE SAME terminals to compare algorithm improvements"
-echo "   ./run_optimization.sh 20 1.5 10.0 5.0 10 moderate yes"
+echo "   ./run_optimization.sh 20 1.6 10.0 5.0 10 moderate yes"
 echo ""
 echo "   # Run again on existing directory (reuse terminals)"
 echo "   ./run_optimization.sh 20 2.0 10.0 5.0 10 moderate yes"
 echo ""
 echo "NOTE:"
-echo "  - Budget is NORMALIZED (0-3 typical for 20 terminals)"
+echo "  - Budget is NORMALIZED (0.5-3.0 typical for 20 terminals)"
 echo "  - Set reuse_terminals=yes to test on SAME terminal set"
 echo "  - Battery objective now INVERTED: low battery = high priority"
+echo "  - MST correction uses pre-computation (adjusts FST costs directly)"

@@ -626,13 +626,25 @@ gst_channel_ptr		param_print_solve_trace;
 		}
 
 		/* Identify MST pairs for bias correction (only if MST_CORRECTION enabled) */
-		/* PSW: Using pre-computation approach - NO y_ij variables needed */
+		/* PSW: Two approaches available:
+		 * 1. Pre-computation (default): Adjust FST costs directly, no y_ij variables
+		 * 2. Constraint-based (USE_CONSTRAINT_MST=1): Add y_ij variables and 3 constraints per pair
+		 *    WARNING: Constraint-based approach causes CPLEX crashes during branching! */
 		if (getenv("ENABLE_MST_CORRECTION") != NULL) {
 			mst_info = identify_mst_pairs(cip, edge_mask, nedges);
 			if (mst_info != NULL) {
-				num_y_vars = 0;  /* Pre-computation approach - no y_ij variables */
-				fprintf(stderr, "DEBUG MST_CORRECTION: Found %d MST pairs (using pre-computation, no y_ij vars)\n",
-				        mst_info -> num_pairs);
+				if (getenv("USE_CONSTRAINT_MST") != NULL) {
+					/* Constraint-based approach - allocate y_ij variables */
+					num_y_vars = mst_info -> num_pairs;
+					fprintf(stderr, "DEBUG MST_CORRECTION: Found %d MST pairs (CONSTRAINT-BASED approach with y_ij vars)\n",
+					        mst_info -> num_pairs);
+					fprintf(stderr, "WARNING: Constraint-based MST correction may cause CPLEX crashes during branching!\n");
+				} else {
+					/* Pre-computation approach - no y_ij variables */
+					num_y_vars = 0;
+					fprintf(stderr, "DEBUG MST_CORRECTION: Found %d MST pairs (using pre-computation, no y_ij vars)\n",
+					        mst_info -> num_pairs);
+				}
 			}
 		}
 	}
@@ -845,11 +857,72 @@ gst_channel_ptr		param_print_solve_trace;
 		free((char*)vertex_to_terminal);
 	}
 
-	/* PSW: MST correction now uses pre-computation approach */
-	/* No y_ij variables or constraints needed - FST costs adjusted directly in objective */
+	/* PSW: MST correction - either pre-computation or constraint-based */
 	if (getenv("ENABLE_MST_CORRECTION") != NULL && mst_info != NULL && mst_info -> num_pairs > 0) {
-		fprintf(stderr, "DEBUG MST_CORRECTION: Using pre-computation approach for %d MST pairs (no constraints added)\n",
-		        mst_info -> num_pairs);
+		if (getenv("USE_CONSTRAINT_MST") != NULL) {
+			/* CONSTRAINT-BASED APPROACH: Add y_ij variables and 3 constraints per pair */
+			/* This causes CPLEX crashes during branching - used for demonstration only! */
+			fprintf(stderr, "DEBUG MST_CORRECTION: Adding CONSTRAINT-BASED MST correction for %d pairs\n",
+			        mst_info -> num_pairs);
+
+			for (i = 0; i < mst_info -> num_pairs; i++) {
+				struct mst_pair * pair = &(mst_info -> pairs[i]);
+				int fst_i = pair -> fst_i;
+				int fst_j = pair -> fst_j;
+				int y_ij_var = nedges + num_not_covered + i;  /* y_ij variable index */
+
+				fprintf(stderr, "DEBUG MST_CORRECTION: Adding constraints for pair %d: FST#%d + FST#%d, y_ij var=%d\n",
+				        i, fst_i, fst_j, y_ij_var);
+
+				/* Constraint 1: y_ij <= x_i */
+				rp = pool -> cbuf;
+				rp -> var = y_ij_var + RC_VAR_BASE;
+				rp -> val = 1;
+				++rp;
+				rp -> var = fst_i + RC_VAR_BASE;
+				rp -> val = -1;
+				++rp;
+				rp -> var = RC_OP_LE;
+				rp -> val = 0;
+				_gst_add_constraint_to_pool (pool, pool -> cbuf, TRUE);
+				fprintf(stderr, "DEBUG MST_CORRECTION:   Added constraint: y[%d] <= x[%d]\n", i, fst_i);
+
+				/* Constraint 2: y_ij <= x_j */
+				rp = pool -> cbuf;
+				rp -> var = y_ij_var + RC_VAR_BASE;
+				rp -> val = 1;
+				++rp;
+				rp -> var = fst_j + RC_VAR_BASE;
+				rp -> val = -1;
+				++rp;
+				rp -> var = RC_OP_LE;
+				rp -> val = 0;
+				_gst_add_constraint_to_pool (pool, pool -> cbuf, TRUE);
+				fprintf(stderr, "DEBUG MST_CORRECTION:   Added constraint: y[%d] <= x[%d]\n", i, fst_j);
+
+				/* Constraint 3: y_ij >= x_i + x_j - 1 */
+				rp = pool -> cbuf;
+				rp -> var = y_ij_var + RC_VAR_BASE;
+				rp -> val = 1;
+				++rp;
+				rp -> var = fst_i + RC_VAR_BASE;
+				rp -> val = -1;
+				++rp;
+				rp -> var = fst_j + RC_VAR_BASE;
+				rp -> val = -1;
+				++rp;
+				rp -> var = RC_OP_GE;
+				rp -> val = -1;
+				_gst_add_constraint_to_pool (pool, pool -> cbuf, TRUE);
+				fprintf(stderr, "DEBUG MST_CORRECTION:   Added constraint: y[%d] >= x[%d] + x[%d] - 1\n", i, fst_i, fst_j);
+			}
+			fprintf(stderr, "DEBUG MST_CORRECTION: Added %d y_ij variables and %d constraints (3 per pair)\n",
+			        mst_info -> num_pairs, mst_info -> num_pairs * 3);
+		} else {
+			/* PRE-COMPUTATION APPROACH: No constraints needed */
+			fprintf(stderr, "DEBUG MST_CORRECTION: Using pre-computation approach for %d MST pairs (no constraints added)\n",
+			        mst_info -> num_pairs);
+		}
 	}
 
 	/* Now generate one constraint per incompatible pair... */
@@ -1334,14 +1407,21 @@ char			tbuf [32];
 		}
 
 		/* Identify MST pairs for bias correction (only if MST_CORRECTION enabled) */
-		/* PSW: Using pre-computation approach - NO y_ij variables needed */
+		/* PSW: Two approaches - pre-computation (default) or constraint-based (USE_CONSTRAINT_MST=1) */
 		if (getenv("ENABLE_MST_CORRECTION") != NULL) {
 			mst_info_lp = identify_mst_pairs(cip, edge_mask, nedges);
 			if (mst_info_lp != NULL) {
-				/* Don't allocate y_ij variables - we'll adjust FST costs directly */
-				num_y_vars_lp = 0;  /* Pre-computation approach */
-				fprintf(stderr, "DEBUG MST_CORRECTION (LP): Found %d MST pairs (using pre-computation, no y_ij vars)\n",
-				        mst_info_lp -> num_pairs);
+				if (getenv("USE_CONSTRAINT_MST") != NULL) {
+					/* Constraint-based approach - allocate y_ij variables */
+					num_y_vars_lp = mst_info_lp -> num_pairs;
+					fprintf(stderr, "DEBUG MST_CORRECTION (LP): Found %d MST pairs (CONSTRAINT-BASED with y_ij vars)\n",
+					        mst_info_lp -> num_pairs);
+				} else {
+					/* Pre-computation approach - no y_ij variables */
+					num_y_vars_lp = 0;
+					fprintf(stderr, "DEBUG MST_CORRECTION (LP): Found %d MST pairs (using pre-computation, no y_ij vars)\n",
+					        mst_info_lp -> num_pairs);
+				}
 			}
 		}
 	}
@@ -1397,8 +1477,8 @@ char			tbuf [32];
 				}
 			}
 
-			/* Scale tree cost to [0, nedges] range */
-			double scaled_tree_cost = tree_cost * nedges;
+			/* Tree cost is already normalized [0, 1] - no scaling needed */
+			double scaled_tree_cost = tree_cost;
 
 			/* PSW: Use SUM of individual terminal battery costs (not average)
 			 * This ensures FSTs covering low-battery terminals get stronger priority
@@ -1424,30 +1504,49 @@ char			tbuf [32];
 			objx [nedges + i] = beta;
 		}
 
-		/* PSW: PRE-COMPUTE MST corrections by adjusting FST costs directly */
-		/* This avoids adding y_ij variables/constraints which cause CPLEX crashes */
-		/* For each pair sharing a terminal, subtract D_ij/2 from each FST's cost */
-		/* When both selected: -D_ij/2 - D_ij/2 = -D_ij (full correction) */
-		/* When one selected: -D_ij/2 (partial correction, acceptable approximation) */
+		/* PSW: MST corrections - either pre-computation or constraint-based */
 		if (getenv("ENABLE_MST_CORRECTION") != NULL && mst_info_lp != NULL && mst_info_lp -> num_pairs > 0) {
-			fprintf(stderr, "DEBUG MST_CORRECTION (LP): Pre-computing MST corrections by adjusting FST costs\n");
-			for (i = 0; i < mst_info_lp -> num_pairs; i++) {
-				struct mst_pair * pair = &(mst_info_lp -> pairs[i]);
-				int fst_i = pair -> fst_i;
-				int fst_j = pair -> fst_j;
-				double D_ij = pair -> D_ij;
+			if (getenv("USE_CONSTRAINT_MST") != NULL) {
+				/* CONSTRAINT-BASED APPROACH: Add -D_ij * y_ij to objective */
+				fprintf(stderr, "DEBUG MST_CORRECTION (LP): Setting y_ij objective coefficients (CONSTRAINT-BASED)\n");
+				for (i = 0; i < mst_info_lp -> num_pairs; i++) {
+					struct mst_pair * pair = &(mst_info_lp -> pairs[i]);
+					double D_ij = pair -> D_ij;
+					int y_ij_var = nedges + num_not_covered_lp + i;
 
-				/* Subtract half the double-counting from each FST */
-				double correction = -D_ij / 2.0;
-				objx[fst_i] += correction;
-				objx[fst_j] += correction;
+					/* Objective coefficient for y_ij is -D_ij */
+					/* When both FSTs selected, y_ij=1, contribution = -D_ij (correction) */
+					objx[y_ij_var] = -D_ij;
 
-				fprintf(stderr, "DEBUG MST_CORRECTION (LP): Pair %d: FST#%d + FST#%d share terminal, D_ij=%.3f, correction=%.3f each\n",
-				        i, fst_i, fst_j, D_ij, correction);
-				fprintf(stderr, "DEBUG MST_CORRECTION (LP):   FST#%d: objx adjusted by %.3f\n", fst_i, correction);
-				fprintf(stderr, "DEBUG MST_CORRECTION (LP):   FST#%d: objx adjusted by %.3f\n", fst_j, correction);
+					fprintf(stderr, "DEBUG MST_CORRECTION (LP): y[%d] (FST#%d + FST#%d) objective coefficient = -%.3f\n",
+					        i, pair -> fst_i, pair -> fst_j, D_ij);
+				}
+				fprintf(stderr, "DEBUG MST_CORRECTION (LP): Set objective coefficients for %d y_ij variables\n",
+				        mst_info_lp -> num_pairs);
+			} else {
+				/* PRE-COMPUTATION APPROACH: Adjust FST costs directly */
+				/* For each pair sharing a terminal, subtract D_ij/2 from each FST's cost */
+				/* When both selected: -D_ij/2 - D_ij/2 = -D_ij (full correction) */
+				/* When one selected: -D_ij/2 (partial correction, acceptable approximation) */
+				fprintf(stderr, "DEBUG MST_CORRECTION (LP): Pre-computing MST corrections by adjusting FST costs\n");
+				for (i = 0; i < mst_info_lp -> num_pairs; i++) {
+					struct mst_pair * pair = &(mst_info_lp -> pairs[i]);
+					int fst_i = pair -> fst_i;
+					int fst_j = pair -> fst_j;
+					double D_ij = pair -> D_ij;
+
+					/* Subtract half the double-counting from each FST */
+					double correction = -D_ij / 2.0;
+					objx[fst_i] += correction;
+					objx[fst_j] += correction;
+
+					fprintf(stderr, "DEBUG MST_CORRECTION (LP): Pair %d: FST#%d + FST#%d share terminal, D_ij=%.3f, correction=%.3f each\n",
+					        i, fst_i, fst_j, D_ij, correction);
+					fprintf(stderr, "DEBUG MST_CORRECTION (LP):   FST#%d: objx adjusted by %.3f\n", fst_i, correction);
+					fprintf(stderr, "DEBUG MST_CORRECTION (LP):   FST#%d: objx adjusted by %.3f\n", fst_j, correction);
+				}
+				fprintf(stderr, "DEBUG MST_CORRECTION (LP): Pre-computed corrections for %d MST pairs\n", mst_info_lp -> num_pairs);
 			}
-			fprintf(stderr, "DEBUG MST_CORRECTION (LP): Pre-computed corrections for %d MST pairs\n", mst_info_lp -> num_pairs);
 		}
 	} else {
 		/* Default mode: use only tree costs */
@@ -1852,8 +1951,8 @@ char			tbuf [32];
 			}
 		}
 
-		/* Scale tree cost to [0, nedges] range */
-		double scaled_tree_cost = tree_cost * nedges;
+		/* Tree cost is already normalized [0, 1] - no scaling needed */
+		double scaled_tree_cost = tree_cost;
 
 		/* PSW: Use SUM of individual terminal battery costs (not average)
 		 * This ensures FSTs covering low-battery terminals get stronger priority

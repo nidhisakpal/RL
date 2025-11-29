@@ -1,9 +1,0 @@
-Selected FSTs:           12
-Covered Terminals:       14 / 20 (70.0)
-Uncovered Terminals:     6
-Tree Length Cost (Normalized): 1.466299
-Tree Length Cost (Raw):        844365.16
-Battery Cost (Estimated):      608.90
-Budget Used:             1.466299
-Budget Limit:            1.600000
-Budget Utilization:      91.64

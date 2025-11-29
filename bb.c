@@ -311,11 +311,12 @@ gst_param_ptr		params;
 	root -> dir	= 0;
 	root -> depth	= 0;
 	root -> br1cnt	= 0;
-	/* PSW: Allocate space for FST variables + not_covered variables in multi-objective mode */
+	/* PSW: Allocate space for FST variables + not_covered variables + y_ij variables in multi-objective mode */
 	int total_vars = nedges;
 	if (getenv("GEOSTEINER_BUDGET") != NULL) {
 		/* Count terminals for not_covered variables - must match constrnt.c logic */
 		bitmap_t* vert_mask_init = cip -> initial_vert_mask;
+		bitmap_t* edge_mask_init = cip -> initial_edge_mask;
 		int num_terminals = 0;
 		for (int i = 0; i < cip -> num_verts; i++) {
 			if (BITON (vert_mask_init, i) && cip -> tflag[i]) {
@@ -323,10 +324,22 @@ gst_param_ptr		params;
 			}
 		}
 		total_vars += num_terminals;  /* Add space for not_covered variables */
+
+		/* Estimate y_ij variables (conservative: 3 per 3-terminal FST) - only if MST_CORRECTION enabled */
+		if (getenv("ENABLE_MST_CORRECTION") != NULL) {
+			int num_y_vars_estimate = 0;
+			for (int i = 0; i < nedges; i++) {
+				if (BITON (edge_mask_init, i) && cip -> edge_size[i] == 3) {
+					num_y_vars_estimate += 3;
+				}
+			}
+			total_vars += num_y_vars_estimate;  /* Add space for y_ij variables */
+		}
 	}
 	root -> x	= NEWA (total_vars, double);
 	root -> cpiter	= -1;		/* x is not current. */
-	root -> zlb	= NEWA (2 * nedges, double);
+	/* PSW: zlb and bheur must accommodate all variables (FST + not_covered + y_ij), not just FST edges */
+	root -> zlb	= NEWA (2 * total_vars, double);
 	root -> fixed	= fixed;
 	root -> value	= value;
 	root -> n_uids	= 0;
@@ -334,15 +347,16 @@ gst_param_ptr		params;
 	root -> bc_row	= NULL;
 	root -> rstat	= NULL;
 	root -> cstat	= NULL;
-	root -> bheur	= NEWA (nedges, double);
+	root -> bheur	= NEWA (total_vars, double);
 	root -> next	= NULL;
 	root -> prev	= NULL;
 
-	for (i = 0; i < nedges; i++) {
+	/* PSW: Initialize for all variables, not just nedges */
+	for (i = 0; i < total_vars; i++) {
 		root -> bheur [i] = 0.0;
 	}
 
-	for (i = 0; i < 2*nedges; i++) {
+	for (i = 0; i < 2*total_vars; i++) {
 		root -> zlb [i] = -DBL_MAX;
 	}
 
@@ -529,11 +543,8 @@ double			save_objlim;
 	objlim = DBL_MAX;
 	CPXsetdblparam (cplex_env, CPX_PARAM_OBJULIM, objlim);
 
-	/* PSW: Set MIP gap tolerance to 5% (0.05) for battery-aware mode */
-	if (getenv("GEOSTEINER_BUDGET") != NULL) {
-		CPXsetdblparam (cplex_env, CPX_PARAM_EPGAP, 0.05);
-		fprintf(stderr, "DEBUG CPLEX: Set MIP gap tolerance (epgap) to 0.05 (5%%)\n");
-	}
+	/* PSW: MIP gap tolerance is now set in lpinit.c (0.1% for quality solutions) */
+	/* Removed 5% override - was too loose and caused poor solution quality */
 #endif
 
 	/* Restore upper bound, if available. */
@@ -564,9 +575,15 @@ double			save_objlim;
 
 #ifdef CPLEX
 	/* Create arrays for changing variable bounds... */
-	b_index	= NEWA (2 * nedges, int);
-	b_lu	= NEWA (2 * nedges, char);
-	b_bd	= NEWA (2 * nedges, double);
+	/* PSW: In budget mode, account for additional variables (not_covered + y_ij) */
+	int total_bound_vars = nedges;
+	if (getenv("GEOSTEINER_BUDGET") != NULL) {
+		/* Estimate total variables: FSTs + terminals + y_ij (3 per 3-terminal FST) */
+		total_bound_vars = nedges + cip -> num_verts + (nedges / 2);
+	}
+	b_index	= NEWA (2 * total_bound_vars, int);
+	b_lu	= NEWA (2 * total_bound_vars, char);
+	b_bd	= NEWA (2 * total_bound_vars, double);
 #endif
 
 #if 0
@@ -3145,9 +3162,13 @@ bool			try_localcuts;
 	/* Exhaustively enumerate all components that are sufficiently	*/
 	/* small...  Delete them from the list when done.		*/
 	hookp = &comp;
+	fprintf(stderr, "DEBUG: About to enumerate components\n");
 	while ((p = *hookp) NE NULL) {
+		fprintf(stderr, "DEBUG: Processing component with %d verts\n", p -> num_verts);
 		if (p -> num_verts <= bbip -> params -> sec_enum_limit) {
+			fprintf(stderr, "DEBUG: Calling enumerate_all_subtours\n");
 			cp2 = _gst_enumerate_all_subtours (p, NULL, bbip);
+			fprintf(stderr, "DEBUG: Returned from enumerate_all_subtours\n");
 			if (cp2 EQ NULL) {
 #if 0
 				/* Try finding a local cut for component. */

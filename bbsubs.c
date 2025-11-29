@@ -127,12 +127,13 @@ struct bbnode *		p1;
 	}
 	else {
 		p = NEW (struct bbnode);
-		/* PSW: Allocate space for FST variables + not_covered variables in multi-objective mode */
+		/* PSW: Allocate space for FST + not_covered + y_ij variables in multi-objective mode */
 		int total_vars = nedges;
 		if (getenv("GEOSTEINER_BUDGET") != NULL) {
 			/* Count terminals for not_covered variables - must match constrnt.c logic */
 			struct gst_hypergraph* cip = bbip -> cip;
 			bitmap_t* vert_mask_init = cip -> initial_vert_mask;
+			bitmap_t* edge_mask_init = cip -> initial_edge_mask;
 			int num_terminals = 0;
 			for (int i = 0; i < cip -> num_verts; i++) {
 				if (BITON (vert_mask_init, i) && cip -> tflag[i]) {
@@ -140,12 +141,24 @@ struct bbnode *		p1;
 				}
 			}
 			total_vars += num_terminals;  /* Add space for not_covered variables */
+
+			/* Estimate y_ij variables (conservative: 3 per 3-terminal FST) - only if MST_CORRECTION enabled */
+			if (getenv("ENABLE_MST_CORRECTION") != NULL) {
+				int num_y_vars_estimate = 0;
+				for (int i = 0; i < nedges; i++) {
+					if (BITON (edge_mask_init, i) && cip -> edge_size[i] == 3) {
+						num_y_vars_estimate += 3;
+					}
+				}
+				total_vars += num_y_vars_estimate;  /* Add space for y_ij variables */
+			}
 		}
 		p -> x	   = NEWA (total_vars, double);
-		p -> zlb   = NEWA (2 * nedges, double);
+		/* PSW: zlb and bheur must accommodate all variables, not just FST edges */
+		p -> zlb   = NEWA (2 * total_vars, double);
 		p -> fixed = NEWA (nmasks, bitmap_t);
 		p -> value = NEWA (nmasks, bitmap_t);
-		p -> bheur = NEWA (nedges, double);
+		p -> bheur = NEWA (total_vars, double);
 	}
 	p -> owner	= bbip;
 	p -> z		= z;
@@ -184,13 +197,25 @@ struct bbnode *		p1;
 	p -> cstat	= NULL;
 
 	/* Copy parent's LP solution, etc. */
-	memcpy (p -> x, parent -> x, nedges * sizeof (p -> x [0]));
-	memcpy (p -> zlb, parent -> zlb, nedges * (2 * sizeof (p -> zlb [0])));
-	memcpy (p -> bheur, parent -> bheur, nedges * sizeof (p -> bheur [0]));
+	/* PSW: Must copy ALL variables (FST + not_covered + y_ij), not just FST edges */
+	/* Use the ACTUAL LP size instead of estimating - the parent's LP is already set up */
+	int copy_size = GET_LP_NUM_COLS (bbip -> lp);
+	fprintf(stderr, "DEBUG MEMCPY: Creating node %d, nedges=%d, copy_size=%d\n",
+		tp -> snum, nedges, copy_size);
+	fprintf(stderr, "DEBUG MEMCPY: About to copy %zu bytes for x array\n",
+		copy_size * sizeof (p -> x [0]));
+	memcpy (p -> x, parent -> x, copy_size * sizeof (p -> x [0]));
+	fprintf(stderr, "DEBUG MEMCPY: x copied, about to copy zlb\n");
+	memcpy (p -> zlb, parent -> zlb, 2 * copy_size * sizeof (p -> zlb [0]));
+	fprintf(stderr, "DEBUG MEMCPY: zlb copied, about to copy bheur\n");
+	memcpy (p -> bheur, parent -> bheur, copy_size * sizeof (p -> bheur [0]));
+	fprintf(stderr, "DEBUG MEMCPY: All arrays copied successfully\n");
 
 	/* Save the current basis (actually the parent's basis)	*/
 	/* into this node.					*/
+	fprintf(stderr, "DEBUG MEMCPY: About to save node basis for node %d\n", tp -> snum);
 	_gst_save_node_basis (p, bbip);
+	fprintf(stderr, "DEBUG MEMCPY: Node basis saved successfully for node %d\n", tp -> snum);
 
 	/* Insert node into depth-first list... */
 	p1 = tp -> first;

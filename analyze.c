@@ -146,8 +146,9 @@ struct ainfo		ainfo;
 	kmasks	= cip -> num_vert_masks;
 	nmasks	= cip -> num_edge_masks;
 
-	rbuf = NEWA (nedges + 1, struct rcoef);
-	A = NEWA (nedges, int);
+	/* PSW: Use pool->nvars instead of nedges to account for not_covered + y_ij variables */
+	rbuf = NEWA (pool -> nvars + 1, struct rcoef);
+	A = NEWA (pool -> nvars, int);
 
 	ainfo.bbip	= bbip;
 	ainfo.cp1	= NULL;
@@ -161,7 +162,8 @@ struct ainfo		ainfo;
 	ainfo.vstack	= NEWA (nverts, int);
 	ainfo.vmap	= NEWA (nverts, int);
 	ainfo.vlist	= NEWA (nverts, int);
-	ainfo.emap	= NEWA (nedges, int);
+	/* PSW: Use pool->nvars instead of nedges to account for not_covered + y_ij variables */
+	ainfo.emap	= NEWA (pool -> nvars, int);
 	ainfo.elist	= NEWA (nedges, int);
 	ainfo.num_le	= 0;
 	ainfo.dec_le	= 0;
@@ -182,7 +184,8 @@ struct ainfo		ainfo;
 	for (i = 0; i < nverts; i++) {
 		ainfo.vmap [i] = -1;
 	}
-	for (i = 0; i < nedges; i++) {
+	/* PSW: Initialize emap for all variables, not just FSTs */
+	for (i = 0; i < pool -> nvars; i++) {
 		ainfo.emap [i] = -1;
 	}
 
@@ -222,11 +225,13 @@ struct ainfo		ainfo;
 			++ainfo.num_ge;
 #if 1
 			/* Subtract constraint from total degree row. */
+			/* PSW: Initialize A for all variables */
+			for (j = 0; j < pool -> nvars; j++) {
+				A [j] = 0;
+			}
+			/* PSW: Only FST variables have edge_size */
 			for (j = 0; j < nedges; j++) {
-				if (NOT BITON (cip -> initial_edge_mask, j)) {
-					A [j] = 0;
-				}
-				else {
+				if (BITON (cip -> initial_edge_mask, j)) {
 					A [j] = cip -> edge_size [j] - 1;
 				}
 			}
@@ -234,7 +239,10 @@ struct ainfo		ainfo;
 				k = cp [j].var;
 				FATAL_ERROR_IF (k < RC_VAR_BASE);
 				k -= RC_VAR_BASE;
-				A [k] -= cp [j].val;
+				/* PSW: Only subtract if within bounds */
+				if (k < pool -> nvars) {
+					A [k] -= cp [j].val;
+				}
 			}
 			k = 0;
 			for (j = 0; j < nedges; j++) {
@@ -344,7 +352,10 @@ bool			changed;
 	while (cp1 < cp2) {
 		e = cp1 -> var;
 		++cp1;
-		SETBIT (enz, e);
+		/* PSW: Skip non-FST variables (enz is edge bitmap) */
+		if (e < cip -> num_edges) {
+			SETBIT (enz, e);
+		}
 	}
 
 	numS = 0;	/* No vertices yet known to be in S. */
@@ -358,6 +369,8 @@ bool			changed;
 		e = cp1 -> var;
 		ae = cp1 -> val;
 		++cp1;
+		/* PSW: Skip non-FST variables (not_covered, y_ij) */
+		if (e >= cip -> num_edges) continue;
 		if (BITON (edone, e)) continue;
 		if (ae NE cip -> edge_size [e] - 1)  continue;
 		vp1 = cip -> edge [e];
@@ -424,6 +437,8 @@ bool			changed;
 			e = cp1 -> var;
 			ae = cp1 -> val;
 			++cp1;
+			/* PSW: Skip non-FST variables (not_covered, y_ij) */
+			if (e >= cip -> num_edges) continue;
 			if (BITON (edone, e)) continue;
 
 			/* Count vertices of edge e known to be in S	*/
@@ -482,6 +497,8 @@ bool			changed;
 		while (cp1 < cp2) {
 			e = cp1 -> var;
 			++cp1;
+			/* PSW: Skip non-FST variables */
+			if (e >= cip -> num_edges) continue;
 			if (BITON (edone, e)) continue;
 			vp1 = cip -> edge [e];
 			vp2 = cip -> edge [e + 1];
@@ -576,8 +593,11 @@ fail:	;
 	while (cp1 < cp2) {
 		e = cp1 -> var;
 		++cp1;
-		CLRBIT (edone, e);
-		CLRBIT (enz, e);
+		/* PSW: Skip non-FST variables (edone/enz are edge bitmaps) */
+		if (e < cip -> num_edges) {
+			CLRBIT (edone, e);
+			CLRBIT (enz, e);
+		}
 	}
 }
 
@@ -642,7 +662,8 @@ bool			swapped;
 	con.type	= CT_SUBTOUR;
 	con.mask	= stour;
 
-	rbuf = NEWA (nedges + 1, struct rcoef);
+	/* PSW: Use pool->nvars instead of nedges to account for not_covered + y_ij variables */
+	rbuf = NEWA (bbip -> cpool -> nvars + 1, struct rcoef);
 
 	cp3 = _gst_expand_constraint (&con, rbuf, bbip);
 
@@ -907,6 +928,8 @@ int			zedge_nz;
 	while (cp1 < cp2) {
 		e = cp1 -> var;
 		++cp1;
+		/* PSW: Skip non-FST variables */
+		if (e >= cip -> num_edges) continue;
 		if (BITON (edone, e)) continue;
 		vp1 = cip -> edge [e];
 		vp2 = cip -> edge [e + 1];
@@ -938,6 +961,8 @@ int			zedge_nz;
 	cedge_nz = 0;
 	for (cp1 = cp; cp1 < cp2; ++cp1) {
 		e = cp1 -> var;
+		/* PSW: Skip non-FST variables */
+		if (e >= cip -> num_edges) continue;
 		if (BITON (edone, e)) continue;
 
 		k = 0;
@@ -1000,6 +1025,8 @@ int			zedge_nz;
 	/* Generate one row per unfinished edge in the constraint. */
 	for (cp1 = cp; cp1 < cp2; cp1++) {
 		e = cp1 -> var;
+		/* PSW: Skip non-FST variables */
+		if (e >= cip -> num_edges) continue;
 		if (BITON (edone, e)) continue;
 
 		clist -> rows [row] = ip;

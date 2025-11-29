@@ -165,11 +165,15 @@ static int parse_coverage_from_solution(const char *filename, int coverage[], in
 
     while (fgets(line, sizeof(line), f) && num_selected < 1000) {
         /* Look for LP variable assignments: "DEBUG LP_VARS: x[i] = 1.000000" */
-        if (strstr(line, "DEBUG LP_VARS: x[") && strstr(line, "] = 1.0")) {
+        if (strstr(line, "DEBUG LP_VARS: x[")) {
             char *x_ptr = strstr(line, "x[");
             int fst_id;
-            if (x_ptr && sscanf(x_ptr, "x[%d] = 1.0", &fst_id) == 1) {
-                selected_fsts[num_selected++] = fst_id;
+            double value;
+            if (x_ptr && sscanf(x_ptr, "x[%d] = %lf", &fst_id, &value) == 2) {
+                /* Check if FST is selected (value >= 0.5, handles both 1.0 and 1.000000) */
+                if (value >= 0.5) {
+                    selected_fsts[num_selected++] = fst_id;
+                }
             }
         }
     }
@@ -182,10 +186,12 @@ static int parse_coverage_from_solution(const char *filename, int coverage[], in
     /* Second pass: Parse PostScript FST definitions and mark covered terminals */
     rewind(f);
     while (fgets(line, sizeof(line), f)) {
-        /* Look for PostScript FST definitions: "% fs#:" */
+        /* Look for PostScript FST definitions: "% fs#:" or "%  % fs#:" */
         if (strstr(line, "% fs") && strstr(line, ":")) {
-            int fst_id;
-            if (sscanf(line, "%% fs%d:", &fst_id) == 1) {
+            int fst_id = -1;
+            /* Try both formats: "%  % fs#:" (selected) and "% fs#:" (regular) */
+            char *fs_ptr = strstr(line, "fs");
+            if (fs_ptr && sscanf(fs_ptr, "fs%d:", &fst_id) == 1) {
                 /* Check if this FST is actually selected */
                 int is_selected = 0;
                 for (int s = 0; s < num_selected; s++) {
@@ -197,7 +203,7 @@ static int parse_coverage_from_solution(const char *filename, int coverage[], in
 
                 /* Only mark terminals as covered if FST is selected */
                 if (is_selected) {
-                    char *colon = strchr(line, ':');
+                    char *colon = strchr(fs_ptr, ':');
                     if (colon) {
                         char *tok = strtok(colon+1, " \t\n");
                         while (tok) {

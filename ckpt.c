@@ -623,7 +623,13 @@ struct bbinfo *		bbip;
 	bbip -> _x		= NULL;
 	bbip -> slack_size	= 0;
 	bbip -> slack		= NULL;
-	bbip -> dj		= NEWA (nedges, double);
+	/* PSW: dj must accommodate all LP columns (FST + not_covered + y_ij), not just FST edges */
+	int total_vars_dj = nedges;
+	if (getenv("GEOSTEINER_BUDGET") != NULL) {
+		/* Estimate: FSTs + terminals + 3*num_3term_FSTs for y_ij */
+		total_vars_dj = nedges + cip -> num_verts + (nedges / 2);
+	}
+	bbip -> dj		= NEWA (total_vars_dj, double);
 	bbip -> fixed		= NEWA (nmasks, bitmap_t);
 	bbip -> value		= NEWA (nmasks, bitmap_t);
 	bbip -> statp		= NULL;
@@ -634,7 +640,7 @@ struct bbinfo *		bbip;
 	bbip -> next_ckpt_time	= 0;
 	bbip -> force_branch_flag = FALSE;
 
-	for (i = 0; i < nedges; i++) {
+	for (i = 0; i < total_vars_dj; i++) {
 		bbip -> dj [i] = 0.0;
 	}
 	memset (bbip -> fixed, 0, nmasks * sizeof (bitmap_t));
@@ -761,21 +767,8 @@ int *		hookp;
 	pool -> lprows	= NEWA (pool -> maxrows, int);
 	pool -> blocks	= NULL;
 
-	/* PSW: In multi-objective mode, we need space for FST + not_covered variables */
-	int num_not_covered = 0;
-	char* budget_env_check = getenv("GEOSTEINER_BUDGET");
-	if (budget_env_check != NULL) {
-		struct gst_hypergraph* cip = bbip -> cip;
-		bitmap_t* vert_mask = cip -> initial_vert_mask;
-		/* Count terminals for not_covered variables */
-		for (int i = 0; i < cip -> num_verts; i++) {
-			if (BITON (vert_mask, i) && cip -> tflag[i]) {
-				num_not_covered++;
-			}
-		}
-	}
-	int total_vars = pool -> nvars + num_not_covered;
-	pool -> cbuf	= NEWA (total_vars + 1, struct rcoef);
+	/* PSW: pool->nvars already includes FST + not_covered + y_ij variables, so just use it directly */
+	pool -> cbuf	= NEWA (pool -> nvars + 1, struct rcoef);
 
 	/* Zap the hash table. */
 	for (i = 0; i < CPOOL_HASH_SIZE; i++) {

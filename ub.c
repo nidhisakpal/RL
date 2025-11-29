@@ -906,7 +906,7 @@ struct dsuf		sets;
 				char* multi_obj_env = getenv("GEOSTEINER_BUDGET");
 				if (multi_obj_env != NULL) {
 					/* Multi-objective mode with linear normalization: normalized_tree_cost + alpha * normalized_battery_cost */
-					double alpha = 20.0;  /* EXTREME: Battery has 200x priority over tree cost for maximum switching */
+					double alpha = 10.0;  /* EXTREME: Battery has 200x priority over tree cost for maximum switching */
 
 					/* PSW: Use GLOBAL normalization constants computed during hypergraph initialization */
 					double max_fst_cost = cip -> max_fst_cost;

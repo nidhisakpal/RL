@@ -3,28 +3,69 @@ results*/
 results/
 
 # Compiled binaries
+bb
+rfst
+ufst
+smt
+hgmst
+efst
+prunefst
+dumpfst
+fst2graph
+plotfst
+rand_points
+demo1
+demo2
+demo3
+demo4
 simulate
+analyze
+analyze_ckpt
+merge_ckpt
+battery_wrapper
 compute_topo_dist_simple
 compute_topology_distance
 test_parse*
-bb
-efst
-hgmst
-plotfst
-prunefst
-rand_points
-smt
-merge_ckpt
 
-# Object files
+# Object files and libraries
 *.o
+*.lo
+*.a
+*.so
+*.dylib
+*.dep
+.libs/
+libgeosteiner.a
+
+# All markdown files except USAGE_GUIDE.md
+*.md
+!USAGE_GUIDE.md
+
+# Test files
+test_*.fst
+test_*.txt
+test_*.html
+solution*.txt
+
+# Temporary and log files
+*.tmp
+*.log
+*.bak
+*~
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Patch files
+*.patch
 
 # Python cache
 __pycache__/
 *.pyc
 
-# Session logs and test files
-SESSION_LOG.md
-test_*.txt
-test_*.html
-solution.txt
+# Core dumps
+core
+core.*
