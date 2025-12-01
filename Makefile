@@ -205,6 +205,8 @@ PROGRAM_SRC = \
 	prunefstmain.c \
 	rfstmain.c \
 	smtmain.c \
+    src/logger.c \
+    src/nn_infer.c
 	ufstmain.c
 
 # Source files that:
