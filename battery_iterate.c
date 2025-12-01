@@ -98,6 +98,12 @@ int main(int argc, char* argv[])
     }
 
     printf("=== Phase 4.5: Battery Evolution via External Iteration ===\n");
+	// Initialize logger and neural network
+csv_logger_t* logger = csv_logger_open("battery_training_data.csv");
+
+// Load neural network (expects 2 inputs → 1 output)
+nn_model_t* nn = nn_load("model.onnx", 2, 1);
+
     printf("Terminals: %d\n", n_terminals);
     printf("Budget: %.2f\n", budget);
     printf("Time periods: %d\n", time_periods);
@@ -136,9 +142,20 @@ int main(int argc, char* argv[])
 
         /* Update battery levels based on coverage */
         update_batteries(terminals, n_terminals, time_periods);
+		// Log state of each terminal into CSV
+for (int t = 0; t < n_terminals; t++) {
+    csv_logger_write(
+        logger,
+        iteration,
+        t,
+        terminals[t].battery,
+        terminals[t].covered[0]
+    );
+}
 
         /* Print iteration summary */
         print_iteration_summary(iteration + 1, terminals, n_terminals);
+		
 
         /* Check convergence */
         convergence = check_convergence(old_batteries, terminals, n_terminals);
