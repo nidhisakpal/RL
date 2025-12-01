@@ -26,6 +26,9 @@
 #include <math.h>
 #include <time.h>
 #include <unistd.h>
+#include "src/logger.h"
+#include "src/nn_infer.h"
+
 
 #define MAX_TERMINALS 100
 #define MAX_ITERS 50
